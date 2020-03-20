@@ -51,7 +51,7 @@ Instructions
     - Press 'q' to quit.
 3) Run calibration_checkerboard.py
     - If the code does not work, run take_picture.py again and take more images. You may need up to 100 images.
-    - This code will create a save a file called calib.yaml. This file contains all of the camera distortion matrices needed to correct for intrinsic and extrinsic distortion.
+    - This code will create a save a file called test.yaml inside ```./calib_images```. This file contains all of the camera distortion matrices needed to correct for intrinsic and extrinsic distortion.
 4) Run  aruco_reader.py
     - If you are using a new aruco marker, measure the width of the marker in meters with a caliper, and change the marker_size value. 
     - Time, x, y, and z positions will be written into datafile.csv, and the rotation vectors for roll, pitch, and yaw, will be written in the rvec.csv file.
