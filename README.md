@@ -1,3 +1,8 @@
+Credit where credit is due:
+----------------------------
+Most of this code was taken from njanirudh's Aruco Tracker repo: https://github.com/njanirudh/Aruco_Tracker
+
+
 Dependencies:
 -------------------
  - Python 3.x
