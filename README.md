@@ -39,7 +39,7 @@ Instructions
 --------------
 **Computer Vision:**
 1) Connect camera 
-2) Run take_picture.py
+2) Run webcam-capture-v1.01.py
     - Take at least 10 pictures of the chessboard at different distances and angles from the camera.
     - Press 's' to take a picture.
     - Press 'q' to quit.
