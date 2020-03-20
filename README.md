@@ -40,7 +40,8 @@ Instructions
 **Computer Vision:**
 1) Connect camera 
 2) Run webcam-capture-v1.01.py
-    - Take at least 10 pictures of the checkerboard (located in ./Images/) at different distances and angles from the camera.
+    - Print out checkerboard.png (located in ./images/) on a standard piece of paper and affix it to a rigid surface (such as a clipboard).
+    - Take at least 10 pictures of the checkerboard at different distances and angles from the camera.
     - Press 's' to take a picture.
     - Press 'q' to quit.
 3) Run calibration_checkerboard.py
