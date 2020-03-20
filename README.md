@@ -40,10 +40,10 @@ Instructions
 **Computer Vision:**
 1) Connect camera 
 2) Run webcam-capture-v1.01.py
-    - Take at least 10 pictures of the chessboard at different distances and angles from the camera.
+    - Take at least 10 pictures of the checkerboard (located in ./Images/) at different distances and angles from the camera.
     - Press 's' to take a picture.
     - Press 'q' to quit.
-3) Run calibration.py
+3) Run calibration_checkerboard.py
     - If the code does not work, run take_picture.py again and take more images. You may need up to 100 images.
     - This code will create a save a file called calib.yaml. This file contains all of the camera distortion matrices needed to correct for intrinsic and extrinsic distortion.
 4) Run  aruco_reader.py
