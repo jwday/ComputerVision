@@ -85,8 +85,8 @@ while(True):
         
     except Exception as E:
         #print(E)
-        now = datetime.datetime.utcnow().timestamp() - start_time
-        output.append("{0} {1} {2} {3} {4} {5} {6}\n".format(now, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
+        # now = datetime.datetime.utcnow().timestamp() - start_time
+        # output.append("{0} {1} {2} {3} {4} {5} {6}\n".format(now, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
         # file.write(output)
         
         #write all three dimensions
