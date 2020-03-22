@@ -18,13 +18,15 @@ r = 1  # Measurement variance (How noisy is your measurement?)
 # If there's interaction, there could be cross terms, so q and r would be matrices to model that crossover
 
 x_hat = np.zeros(sz)  # x_hat is the posteri estimate of x (the current estimate of x, after i measureme it at this time and my q and r)
-p = np.zeros(sz)  # p is the posteri error estimate (the current estimate of how wrong it is)
 x_hat_minus = np.zeros(sz)  # x_hat_minus is the priori estimate of x (my best guess of where x will be, before I measure it, based on my previous measurement and guess)
-p_minus = np.zeros(sz) # p_minus is the estimate of error (estimate of how wrong i used to be)
+
+p = np.zeros(sz)  # p is the posteri error estimate (the current estimate of how wrong it is)
+p_minus = np.zeros(sz) # p_minus is the priori estimate of error (estimate of how wrong i used to be)
+
 K = np.zeros(sz)  # K is the gain, or 'blending factor'
 
 x_hat[0] = z[0]  # Initial guess for x (when set to z[0], our 'best guess' for the first measurement is the first data point)
-p[0] = 1  # Initial guess for error p
+p[0] = 0  # Initial guess for error p
 
 for k in range(1, n_iter):
     x_hat_minus[k] = x_hat[k-1]
@@ -46,8 +48,8 @@ plt.plot(x_hat[:,0], x_hat[:,1], 'b-', label='kalman estimate')
 plt.legend()
 plt.show()
 
-plt.figure()
-plt.plot(p[:, 0], 'blue', label='t1 error est.')
-plt.plot(p[:, 1], 'black', label='t2 error est.')
-plt.legend()
-plt.show()
+# plt.figure()
+# plt.plot(p[:, 0], 'blue', label='t1 error est.')
+# plt.plot(p[:, 1], 'black', label='t2 error est.')
+# plt.legend()
+# plt.show()
