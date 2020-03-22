@@ -51,43 +51,42 @@ while(True):
         # this is the function that does all the hard work of actually detecting markers
         corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
-        if ids:
-            # draw/highlight detected markers
-            # this is the function that highlights a detected marker(s)
-            # the inputs are the image ('frame'), the detected corners ('corners'), and the ids of the detected markers ('ids')
-            # this function is only provided for visualization and its use can be omitted without repercussion
-            aruco.drawDetectedMarkers(frame, corners, ids)
+        # draw/highlight detected markers
+        # this is the function that highlights a detected marker(s)
+        # the inputs are the image ('frame'), the detected corners ('corners'), and the ids of the detected markers ('ids')
+        # this function is only provided for visualization and its use can be omitted without repercussion
+        aruco.drawDetectedMarkers(frame, corners, ids)
         
-            # this is the part where we estimate pose of each marker
-            # we need to use the camera calibration information in order to correctly estimate the pose after correcting for camera distortion
-            # the camera pose with respect to a marker is the 3d transformation FROM the marker coordinate system TO the camera coordinate system
-            # it is specified by a rotation and a translation vector (rvec and tvec, respectively)
-                # The 'corners' parameter is the vector of marker corners returned by the detectMarkers() function.
-                # The second parameter is the size of the marker side in meters or in any other unit. Note that the translation vectors of the estimated poses will be in the same unit
-                # cameraMatrix and distCoeffs are the camera calibration parameters that need to be known a priori.
-                # rvecs and tvecs are the rotation and translation vectors respectively, for each of the markers in corners.
-            rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, 0.0655, cameraMatrix, distCoeffs)
-            print(rvec[0][0], "     ", tvec[0][0])  # only print last element because....not sure why
+        # this is the part where we estimate pose of each marker
+        # we need to use the camera calibration information in order to correctly estimate the pose after correcting for camera distortion
+        # the camera pose with respect to a marker is the 3d transformation FROM the marker coordinate system TO the camera coordinate system
+        # it is specified by a rotation and a translation vector (rvec and tvec, respectively)
+            # The 'corners' parameter is the vector of marker corners returned by the detectMarkers() function.
+            # The second parameter is the size of the marker side in meters or in any other unit. Note that the translation vectors of the estimated poses will be in the same unit
+            # cameraMatrix and distCoeffs are the camera calibration parameters that need to be known a priori.
+            # rvecs and tvecs are the rotation and translation vectors respectively, for each of the markers in corners.
+        rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, 0.0655, cameraMatrix, distCoeffs)
+        print(rvec[0][0], "     ", tvec[0][0])  # only print last element because....not sure why
         
-            #  The aruco module provides a function to draw the axis onto the image, so pose estimation can be checked:
-            # image is the input/output image where the axis will be drawn (it will normally be the same image where the markers were detected).
-            # cameraMatrix and distCoeffs are the camera calibration parameters.
-            # rvec and tvec are the pose parameters whose axis want to be drawn.
-            # The last parameter is the length of the axis, in the same unit that tvec (usually meters)
-            aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 0.0655) #Draw Axis
+        #  The aruco module provides a function to draw the axis onto the image, so pose estimation can be checked:
+        # image is the input/output image where the axis will be drawn (it will normally be the same image where the markers were detected).
+        # cameraMatrix and distCoeffs are the camera calibration parameters.
+        # rvec and tvec are the pose parameters whose axis want to be drawn.
+        # The last parameter is the length of the axis, in the same unit that tvec (usually meters)
+        aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 0.0655) #Draw Axis
 
-            now = datetime.datetime.utcnow().timestamp() - start_time
-            # output = "{0} {1} {2} {3}\n".format(now, tvec[0][0][0], tvec[0][0][1], tvec[0][0][2])
-            # file.write(output)
+        now = datetime.datetime.utcnow().timestamp() - start_time
+        # output = "{0} {1} {2} {3}\n".format(now, tvec[0][0][0], tvec[0][0][1], tvec[0][0][2])
+        # file.write(output)
         
-            # write all three dimensions
-            output.append("{0} {1} {2} {3} {4} {5} {6}\n".format(now, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]))
+        # write all three dimensions
+        output.append("{0} {1} {2} {3} {4} {5} {6}\n".format(now, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]))
          
         
     except Exception as E:
         #print(E)
-        # now = datetime.datetime.utcnow().timestamp() - start_time
-        # output = "{0} {1} {2} {3}\n".format(now, np.nan, np.nan, np.nan)
+        now = datetime.datetime.utcnow().timestamp() - start_time
+        output.append("{0} {1} {2} {3} {4} {5} {6}\n".format(now, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
         # file.write(output)
         
         #write all three dimensions
