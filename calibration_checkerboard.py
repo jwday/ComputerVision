@@ -48,7 +48,7 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 
 # ---------- Saving the calibration -----------------
 print("Saving calibration data...")
-cv_file = cv2.FileStorage("calib_images/test.yaml", cv2.FILE_STORAGE_WRITE)
+cv_file = cv2.FileStorage("calib_images/calib.yaml", cv2.FILE_STORAGE_WRITE)
 cv_file.write("camera_matrix", mtx)
 cv_file.write("dist_coeff", dist)
 

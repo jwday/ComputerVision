@@ -9,7 +9,7 @@ References  :
 import cv2
 
 # File storage in OpenCV
-cv_file = cv2.FileStorage("calib_images/test.yaml", cv2.FILE_STORAGE_READ)
+cv_file = cv2.FileStorage("calib_images/calib.yaml", cv2.FILE_STORAGE_READ)
 
 # Note : we also have to specify the type
 # to retrieve otherwise we only get a 'None'

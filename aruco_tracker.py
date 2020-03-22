@@ -7,12 +7,12 @@ cap = cv2.VideoCapture(0)
 cbrow = 6
 cbcol = 9
 
-####---------------------- CALIBRATION ---------------------------
+####---------------------- CAMERA CALIBRATION USING CHECKERBOARD ---------------------------
 # termination criteria for the iterative algorithm
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-# checkerboard of size (7 x 6) is used
+# checkerboard of size (nrow x mcol) is used
 objp = np.zeros((cbrow*cbcol,3), np.float32)
 objp[:,:2] = np.mgrid[0:cbcol,0:cbrow].T.reshape(-1,2)
 
@@ -43,11 +43,13 @@ for fname in images:
         # Draw and display the corners
         img = cv2.drawChessboardCorners(img, (cbcol,cbrow), corners2,ret)
 
-
+# Output calibration parameters
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
-###------------------ ARUCO TRACKER ---------------------------
+
+###------------------ LIVE ARUCO TRACKER ---------------------------
 while (True):
+    # Capture single frame from camera
     ret, frame = cap.read()
 
     # operations on the frame
@@ -69,7 +71,6 @@ while (True):
     # check if the ids list is not empty
     # if no check is added the code will crash
     if np.all(ids != None):
-
         # estimate pose of each marker and return the values
         # rvet and tvec-different from camera coefficients
         rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners, 0.05, mtx, dist)
