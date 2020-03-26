@@ -1,0 +1,61 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from filterpy.kalman import KalmanFilter
+
+df = pd.read_csv('datafile.csv', delim_whitespace=True)
+df.columns = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3']
+df['dt'] = df['Time (s)'].diff().fillna(0)
+zs = df['t1'].values					# The actual measurements I made
+
+n_iter = len(df)
+
+Q = np.array([9.0E-6])					# Process variance/covariance. This is different than State Covariance.
+R = np.array([9.0E-6])					# Measurement variance/covariance. Should be size NxN for N measured states. Each value is the variance of the state measurement
+H = np.array([1., 0])					# Measuring position, but not velocity, so [1, 0] such that Hx yields only position predictions in the residual
+P = np.array([[1., 0], [0, 1]])			# Initial State Covariance (Expected variance of each state variable, including any covariances).
+										# Diagonals of the covariance matrix contains the variance of each variable, and the off-diagonal elements contains the covariances.
+P_minus = P
+
+def state_transition_matrix(k=None):	# State transition matrix of the system, to be updated every time the function is called because dt is not constant
+	dt = df['dt'][k]
+	F = np.array([[1, dt], [0, 1]])
+	return F
+
+B = 0									# Optional control input model
+u = 0									# Optional control inputs
+K = np.zeros(2)
+
+# Initial x. If I don't know what the initial state is, just set to 0.
+x = np.array([zs[0], 0])
+
+def pos_vel_filter(x, P, R, Q, dt):
+	'''
+	Returns a KalmanFilter which implements a constant velocity model for a state [x dx]T.
+	'''
+	kf = KalmanFilter(dim_x=2, dim_z=1)
+	kf.x = np.array([x[0], x[1]]) 		# location and velocity
+	kf.F = np.array([[1, dt], [0, 1]])  # state transition matrix
+	kf.H = np.array([[1., 0]])    		# Measurement function
+	kf.R *= R                     		# measurement uncertainty
+	kf.P[:] = P               			# [:] makes deep copy
+	kf.Q[:] = Q
+	return kf
+
+kf = pos_vel_filter(x, R=R, P=P, Q=Q, dt=0.12)
+
+# # run the kalman filter and store the results
+xs, cov = [], []
+for i, z in enumerate(zs):
+	kf.F = state_transition_matrix(i)
+	kf.predict()
+	kf.update(z)
+	xs.append(kf.x)
+	cov.append(kf.P)
+
+x_filt = pd.DataFrame(xs)
+x_filt.columns = ['Position', 'Velocity']
+x_filt['Time (s)'] = df['Time (s)']
+x_filt.plot(x='Time (s)')
+plt.show()
