@@ -21,10 +21,10 @@ n_iter = len(df)
 sz = (n_iter, z.shape[1])
 
 
-Q = np.ones(z.shape[1])  	# Process error covariance (How steady is your process? If this is higher, your predicted measurement is "trusted" more while your actual measurement is "trusted" less).
-R = np.ones(z.shape[1])		# Measurement error covariance (How noisy is your measurement? If this is lower, your actual measurement is "trusted" more while your predicted measurement is "trusted" less).
+Q = np.ones(z.shape[1])  	# Process error covariance (How steady is your process?)
+R = np.ones(z.shape[1])		# Measurement error covariance (How noisy is your measurement?)
 							# The relative value between these two values is what matters, not their absolute values.
-							# If there's interaction then there could be cross terms, so q and r would be matrices to model that crossover.
+							# If there's interaction between variables, then there will be cross terms.
 H = np.ones(z.shape[1])		# Used to convert and combine the measured value with the predicted value. For multivariable filters, some variables are not measured--this will allow the filter to combine measured with predicted values
 							# In the case of position & velocity, only position is measured. So we make the matrix [1, 0] such that y = z - Hx 
 
@@ -42,10 +42,14 @@ x_hat[0] = z[0]  			# Initial guess for x (when set to z[0], our 'best guess' fo
 p[0] = 1  					# Initial guess for error covariance.
 
 for k in range(1, n_iter):
+	# Predict
     x_hat_minus[k] = x_hat[k-1]		# The "a priori" estimate of x at k, before I measure it (it's really just the "a posteriori" estimate from the previous time step).
     p_minus[k] = p[k-1] + Q			# The "a priori" estimate error covariance at k, before I measure x at k.
 
-    K[k] = p_minus[k]*np.transpose(H) / (H*p_minus[k]*np.transpose(H) + R)		# Gain, or weighting parameter. K is chosen to minimize the "a posteriori" estimate error covariance (p). This is part of the derivation that's rooted in statistics. 
+	# Compute Gain
+    K[k] = p_minus[k]*np.transpose(H) / (H*p_minus[k]*np.transpose(H) + R)		# Gain, or weighting parameter. K is chosen to minimize the "a posteriori" estimate error covariance (p). This is part of the derivation that's rooted in statistics.
+
+	# Update 
     x_hat[k] = x_hat_minus[k] + K[k]*( z[k] - H*x_hat_minus[k] )  				# The "a posteriori" estimate of x at k (my improved estimate of x after I measured it).
     p[k] = (1 - K[k]*H)*p_minus[k]												# The "a posteriori" estimate error covariance at k (my improved estimate of the error between what I estimate x to be vs. what it actually is).
 

@@ -7,7 +7,7 @@ from filterpy.kalman import KalmanFilter
 df = pd.read_csv('datafile.csv', delim_whitespace=True)
 df.columns = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3']
 df['dt'] = df['Time (s)'].diff().fillna(0)
-zs = df['r2'].values					# The actual measurements I made
+zs = df['t1'].values					# The actual measurements I made
 
 n_iter = len(df)
 
@@ -22,33 +22,31 @@ def state_transition_matrix(k=None):	# State transition matrix of the system, to
 	F = np.array([[1, dt, 0.5*dt**2], [0, 1, dt], [0, 0, 1]])
 	return F
 
+B = np.array([0, 0, 0.02])
+
 # B = 0									# Optional control input model
 # u = 0									# Optional control inputs
 K = np.zeros(3)
 
-# Initial x. If I don't know what the initial state is, just set to 0.
+# Initial x. If I don't know what the initial state is, just set it to my first measurement.
 x = np.array([zs[0], 0, 0])
 
-def pos_vel_filter(x, H, P, R, Q, dt):
-	'''
-	Returns a KalmanFilter which implements a constant velocity model for a state [x dx]T.
-	'''
-	kf = KalmanFilter(dim_x=3, dim_z=1)
-	kf.x = x 							# location and velocity
-	kf.F = np.array([[1, dt, 0.5*dt**2], [0, 1, dt], [0, 0, 1]])  # state transition matrix
-	kf.H = H					   		# Measurement function
-	kf.R *= R                     		# measurement uncertainty
-	kf.P[:] = P               			# [:] makes deep copy
-	kf.Q[:] = Q
-	return kf
+# def pos_vel_filter(x, H, P, R, Q, dt):
+kf = KalmanFilter(dim_x=3, dim_z=1, dim_u=1) # Returns a KalmanFilter object which implements a constant acceleration model for a state [x dx ddx]T.
+kf.x = x 							# Estimated position, velocity, and acceleration 
+kf.F = state_transition_matrix(k=0) # State transition matrix
+kf.H = H					   		# Measurement function
+kf.R *= R                     		# Measurement uncertainty
+kf.P[:] = P               			# [:] makes deep copy
+kf.Q[:] = Q
 
-kf = pos_vel_filter(x, H=H, R=R, P=P, Q=Q, dt=0.12)
+# kf = pos_vel_filter(x, H=H, R=R, P=P, Q=Q, dt=0.12)
 
 # # run the kalman filter and store the results
 xs, cov = [], []
 for i, z in enumerate(zs):
 	kf.F = state_transition_matrix(i)
-	kf.predict()
+	kf.predict(u=0, B=B)
 	kf.update(z)
 	xs.append(kf.x)
 	cov.append(kf.P.flatten())
@@ -63,7 +61,7 @@ x_filt.plot(ax=ax[2], x='Time (s)', y='Acceleration')
 plt.show()
 
 f, ax = plt.subplots()
-df.plot(x='Time (s)', y='r2', ax=ax)
+df.plot(x='Time (s)', y='t1', ax=ax)
 x_filt.plot(x='Time (s)', y='Position', ax=ax)
 plt.show()
 

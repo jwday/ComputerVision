@@ -94,7 +94,7 @@ while(True):
         # file2.write(output2)
         pass
         
-############### COME BACK TO THE VIDEO WRITING 
+	############### COME BACK TO THE VIDEO WRITING 
     # out.write(frame)    
     # Display result
     cv2.imshow('Detected Aruco Markers', frame)
