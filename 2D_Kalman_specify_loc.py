@@ -1,3 +1,8 @@
+# This function computes the estimated state of a process using Kalman filtering.
+# The state measurements must be supplied via .csv as an input parameter when executing the script.
+# i.e.
+# > $ ipython -i 2D_Kalman_specify_loc.py ~/DESKTOP/Photos/datafile.csv
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,54 +12,97 @@ import sys
 
 def estimate_pose(datafile):
 	df = pd.read_csv(datafile)											# Columns should already be specified as ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3'] when the datafile is written.
-	# df.columns = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3'] 
-	# df['t1'] = [-x for x in df['t1']]  # Invert the X values
-	df['t2'] = [-x for x in df['t2']]  # Invert the Y values			# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
-	df['dt'] = df['Time (s)'].diff().fillna(0)							# Add a column of time differentials (dt) between measurements
-	zs = df[['t1', 't2']].values										# The actual measurements I made
+	# df.columns = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3'] 	# If the columns aren't already specified, use this line.
 
-	# n_iter = len(df)
+	# df['t1'] = [-x for x in df['t1']] 								# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
+	df['t2'] = [-x for x in df['t2']]
 
-	# Q = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Process variance/covariance. This is different than State Covariance. Should be of size NxN for N tracked states.
-	Q = np.eye(6)*9.0E-6
+	df['dt'] = df['Time (s)'].diff()							# Add a column of time differentials (dt) between measurements
+	df['dt'] = df['dt'].fillna(df['dt'].mean())
+	zs = df[['t1', 't2']].values										# Create a Numpy array of the measurements for use in the Kalman filter
 
-	R = np.array([[9.0E-6, 	0		],									# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
-				  [0, 		9.0E-6 	]])	
 
-	H = np.array([[1., 	0, 	0, 	0, 	0, 	0	],							# Measurement-space conversion. Should be size MxN for M measured states and N tracked states.
-				  [0, 	0, 	0, 	1, 	0, 	0	]])							# Measured states are associated with a 1 (or whatever conversion factor is necessary to translate the state into an associated measurement). Everything else is 0.
+	# -----------------------------------------------------------------
+	# STATE COVARIANCE MATRIX (P)
+	# -----------------------------------------------------------------
+	# P = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Initial state covariance (expected variance of each state variable). Should be of size NxN for N tracked states.
+	# P = np.eye(6)*9.0E-6
+	P = np.array([[9.0E-4,		 0,		 0,		 0,		 0,		 0],  # x
+				  [		0,	9.0E-2,		 0,		 0,		 0,		 0],  # xdot
+				  [		0,		 0,	9.0E-0,		 0,		 0,		 0],  # xdotdot
+				  [		0,		 0,		 0,	9.0E-4,		 0,		 0],  # y
+				  [		0,		 0,		 0,		 0,	9.0E-2,		 0],  # ydot
+				  [		0,		 0,		 0,		 0,		 0,	9.0E-0]]) # ydotdot
+
+
+	# -----------------------------------------------------------------
+	# PROCESS NOISE COVARIANCE MATRIX (Q)
+	# -----------------------------------------------------------------
+	# Q = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Process noise covariance. This is different than state covariance and remains UNCHANGED through the Kalman filter. Should be of size NxN for N tracked states.
+	# Q = np.eye(6)*9.0E-6
+
+	# FilterPy provides functions which computes Q by calculating the discrete-time white noise
+	# Q_discrete_white_noise takes 4 parameters:
+	# ..... "dim"; 	Specifies the dimension of the matrix.
+	# .....	"dt"; 	Time step in seconds (if non-constant, take an average).
+	# .....	"var"; 	White noise variance.
+	# .....	"block_size": If your state variable contains more than one dimension, such as a 3d constant velocity model [x x’ y y’ z z’]^T, then Q must be a block diagonal matrix.
+	# For a 2d constant acceleration model [x  x' x'' y  y' y''], dim=3, block_size=2.
+	# For a 3d constant acceleration model with rotation, [x  x' x'' y  y' y'' r  r' r''], dim=3, block_size=3.
+
+	from filterpy.common import Q_discrete_white_noise
+	Q = Q_discrete_white_noise(dim=3, dt=df['dt'].mean(), var=2.35, block_size=2)
+
+
+	# -----------------------------------------------------------------
+	# MEASUREMENT COVARIANCE MATRIX (R)
+	# -----------------------------------------------------------------
+	R = np.array([[9.0E-6, 			 0],								# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
+				  [		0, 		9.0E-6]])
+
+
+	# -----------------------------------------------------------------
+	# STATE-SPACE TO MEASUREMENT-SPACE CONVERSION MATRIX (H)
+	# -----------------------------------------------------------------
+	H = np.array([[1., 	0, 	0, 	0, 	0, 	0],								# Measurement-space conversion. Should be size MxN for M measured states and N tracked states.
+				  [ 0, 	0, 	0, 	1, 	0, 	0]])							# Measured states are associated with a 1 (or whatever conversion factor is necessary to translate the state into an associated measurement). Everything else is 0.
 																		# In this case, we're measuring position but not velocity or acceleration, so [1, 0, 0] such that Hx yields only position predictions in the residual.
 
-	# P = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Initial state covariance (Expected variance of each state variable, including any covariances). Should be of size NxN for N tracked states.
-																		# Diagonals of the covariance matrix contains the variance of each variable, and the off-diagonal elements contains the covariances.
-	P = np.eye(6)*9.0E-6
 
-	# State transition matrix of the system, to be updated every time the function is called because dt is not constant
-	def state_transition_matrix(k=None):
+	# -----------------------------------------------------------------
+	# STATE TRANSITION MODEL MATRIX (F)
+	# -----------------------------------------------------------------
+	def state_transition_matrix(k=None):								# State transition matrix of the system, to be updated every time the function is called because dt is not constant. Should be of size NxN for N tracked states.
 		dt = df['dt'][k]
-		# State transition model. Should be of size NxN for N tracked states.
-		F = np.array([[1, 	dt,		0.5*dt**2, 	0, 		0, 		0			],	# x
-					  [0, 	1, 		dt, 		0, 		0, 		0			],	# xdot
-					  [0, 	0, 		1, 			0, 		0, 		0			], 	# xdotdot
-					  [0, 	0, 		0, 			1, 		dt, 	0.5*dt**2	], 	# y
-					  [0, 	0, 		0, 			0, 		1, 		dt			], 	# ydot
-					  [0, 	0, 		0, 			0, 		0, 		1			]]) # ydotdot
+		F = np.array([[1, 	dt,	0.5*dt**2, 		0, 		0, 			0],	 # x
+					  [0, 	 1, 	   dt, 		0, 		0, 			0],	 # xdot
+					  [0, 	 0, 		1, 		0, 		0, 			0],  # xdotdot
+					  [0, 	 0, 		0, 		1, 	   dt, 	0.5*dt**2],  # y
+					  [0, 	 0, 		0, 		0, 		1, 		   dt],  # ydot
+					  [0, 	 0, 		0, 		0, 		0, 			1]]) # ydotdot
 		return F
 
-
-	# B = np.array([0, 0, 0.02])
-	# B = 0									# Optional control input model
+	# -----------------------------------------------------------------
+	# CONTROL INPUT MATRIX (B)
+	# -----------------------------------------------------------------
+	# B = np.array([0, 0, 0.02])			# Optional control input model
 	# u = 0									# Optional control inputs
 
 
+	# -----------------------------------------------------------------
+	# INITIAL STATE MATRIX (x)
+	# -----------------------------------------------------------------
 	# Initial state. If I don't know what the initial state is, just set it to the first measurement.
-	x = np.array([zs[0][0], 	# x
-				  0, 			# xdot
-				  0, 			# xdotdot
-				  zs[0][1], 	# y
-				  0, 			# ydot
-				  0			])	# ydotdot
+	x = np.array([zs[0][0],  # x
+				  		 0,  # xdot
+				  		 0,  # xdotdot
+				  zs[0][1],  # y
+				  		 0,  # ydot
+				  		 0]) # ydotdot
 
+	# -----------------------------------------------------------------
+	# KALMAN FILTER
+	# -----------------------------------------------------------------
 	kf = KalmanFilter(dim_x=6, dim_z=2, dim_u=0) 	# Initialize a KalmanFilter object.
 	kf.x = x 										# Specify initial state.
 	kf.F = state_transition_matrix(k=0) 			# Specify initial state transition matrix.
@@ -90,6 +138,7 @@ def estimate_pose(datafile):
 			linestyle='None',
 			ax=ax,
 			label='Measured')
+			
 	x_filt.plot(x='X Position', y='Y Position', ax=ax, label='Kalman Estimate')
 	ax.legend(loc='best')
 	plt.axis('equal')
