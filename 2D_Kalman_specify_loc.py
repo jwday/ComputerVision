@@ -17,7 +17,7 @@ def estimate_pose(datafile):
 	# df['t1'] = [-x for x in df['t1']] 								# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
 	df['t2'] = [-x for x in df['t2']]
 
-	df['dt'] = df['Time (s)'].diff()							# Add a column of time differentials (dt) between measurements
+	df['dt'] = df['Time (s)'].diff()									# Add a column of time differentials (dt) between measurements
 	df['dt'] = df['dt'].fillna(df['dt'].mean())
 	zs = df[['t1', 't2']].values										# Create a Numpy array of the measurements for use in the Kalman filter
 
@@ -57,8 +57,8 @@ def estimate_pose(datafile):
 	# -----------------------------------------------------------------
 	# MEASUREMENT COVARIANCE MATRIX (R)
 	# -----------------------------------------------------------------
-	R = np.array([[9.0E-6, 			 0],								# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
-				  [		0, 		9.0E-6]])
+	R = np.array([[5.0E-5, 			 0],								# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
+				  [		0, 		5.0E-5]])
 
 
 	# -----------------------------------------------------------------
@@ -125,13 +125,18 @@ def estimate_pose(datafile):
 	# f, ax = plt.subplots(3, sharex=True)
 	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration']
 	x_filt['Time (s)'] = df['Time (s)']
+	total_time = np.round(x_filt['Time (s)'].iloc[-1],1)
+	framerate = np.round(df.count()[0]/x_filt['Time (s)'].iloc[-1], 2)
 	# x_filt.plot(ax=ax[0], x='Time (s)', y='Position')
 	# x_filt.plot(ax=ax[1], x='Time (s)', y='Velocity')
 	# x_filt.plot(ax=ax[2], x='Time (s)', y='Acceleration')
 	# plt.show()
 
-	dpi = 150
-	f, ax = plt.subplots(dpi=dpi, figsize=[1280/dpi, 720/dpi])
+	dpi = 400
+	f, ax = plt.subplots(dpi=dpi, figsize=[16, 10])
+	plt.suptitle('Measured Position with Kalman Estimate', y=0.98, fontsize=16)
+	plt.title('Total Time: {} sec, Framerate: {} fps'.format(total_time, framerate), fontsize=12)
+	# plt.title('Measured Position with Kalman Estimate\nTotal Time: {} sec'.format(np.round(x_filt['Time (s)'].iloc[-1],1)))
 	df.plot(x='t1', y='t2',
 			marker='o',
 			markersize=2,
@@ -142,9 +147,16 @@ def estimate_pose(datafile):
 	x_filt.plot(x='X Position', y='Y Position', ax=ax, label='Kalman Estimate')
 	ax.legend(loc='best')
 	plt.axis('equal')
-	# plt.xlim(right=0)
-	# plt.ylim(top=0.9)
+	plt.xlabel('X (m)')
+	plt.ylabel('Y (m)')
+	# plt.xlim(left=-1.778, right=0)
+	# plt.ylim(top=1, bottom=0)
+	
 	plt.show()
+
+
+
+
 
 	# covariance = pd.DataFrame(cov)
 	# covariance['Time (s)'] = df['Time (s)']
