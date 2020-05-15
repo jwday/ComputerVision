@@ -34,33 +34,67 @@ import datetime
 import numpy as np
 import sys
 import pandas as pd
+import os
+import sys
+
+height = int(720)
+width = int(height * 16/9)
+
+# Default locations
+calib_loc = '/home/josh/ComputerVision/calib_images/device_nokia7/calib.yaml'
+video_loc = '/home/josh/ComputerVision/videos/output_720p_1fps.mp4'
 
 def get_pose(calib_loc, video_loc):
+	if os.path.isfile(video_loc) and os.path.isfile(calib_loc):
+		print('')
+		print('Running Aruco detection on a single image with specified location and calibration:')
+		print('	Video location: {0}'.format(video_loc))
+		print('	Calibration file location: {0}'.format(calib_loc))
+		print('')
+	else:
+		print('')
+		print('*** One or more of your file paths are invalid. ***')
+		print('	Specified video location: {0}'.format(video_loc))
+		print('	Specified calibration file location: {0}'.format(calib_loc))
+		print('')
+		if not os.path.isfile(video_loc):
+			print('Specified video location is not valid')
+		if not os.path.isfile(calib_loc):
+			print('Specified calibration file location is not valid')
+		print('')
+		sys.exit()
+
 	# Here we set everything up by pulling the video directory so we can save a new file to it later. Also we pull the calibration matrices for the camera used to capture the source video. If you use a new camera, you'll have to get a new calibration matrix.
 	video_loc_dir = '/'.join(video_loc.split('/')[:-1])+'/'  	# Grab the directory of the source video. (ex. if 'video_loc' is '/mnt/c/Users/Josh/Desktop/Photos/output.mp4', this will return '/mnt/c/Users/Josh/Desktop/Photos/')
-	cv_file = cv2.FileStorage(calib_loc, cv2.FILE_STORAGE_READ)	# Load in camera matrix of distortion correction parameters for the camera used to capture source video, for pose estimation
+
+	# Import calibration items (camera matrix and distortion coefficients)
+	print('Importing calibration file...')	
+	calib_file = cv2.FileStorage(calib_loc, cv2.FILE_STORAGE_READ)	# Load in camera matrix of distortion correction parameters for the camera used to capture source video, for pose estimation
+	cameraMatrix = calib_file.getNode("camera_matrix").mat()		# Grab the camera calibration matrix
+	distCoeffs = calib_file.getNode("dist_coeff").mat()				# Grab the camera distortion matrix
+	print('Done!')
+	print('')
 
 	# Here we instantiate a capture object that we'll pass into the Aruco detection algorithm. Also we grab the total number of frames to provide the user with a % completion measure during processing.
-	cap = cv2.VideoCapture(video_loc)							# Instantiate video capture object 'cap'
-	fps = cap.get(cv2.CAP_PROP_FPS)								# Grab the FPS of the source video so you can properly calculate elapsed process time
-	no_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))			# Grab the total number of frames in the source video
-	# width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) 			# Grab the source video width
-	# height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))			# Grab the source video height
+	cap = cv2.VideoCapture(video_loc)								# Instantiate video capture object 'cap'
+	fps = cap.get(cv2.CAP_PROP_FPS)									# Grab the FPS of the source video so you can properly calculate elapsed process time
+	no_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))				# Grab the total number of frames in the source video
+	source_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) 			# Grab the source video width
+	source_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))			# Grab the source video height
+	print('Source size: {0} x {1} px'.format(source_width, source_height))
+	print('Source fps: {}'.format(fps))
+	print('Source frames: {}'.format(no_frames))
+	print('')
 
 	# Here we define the codec and create a VideoWriter object to resave the video (with a coordinate frame drawn on the Aruco marker and reduced in size).
-	fourcc = cv2.VideoWriter_fourcc(*"mp4v")					# Specify the codec used to write the new video
-	out_loc = video_loc_dir + 'aruco_output.mp4'				# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
-	out_res = (1024,576)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
-	out = cv2.VideoWriter(out_loc, fourcc , fps, out_res)		# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
-
-	# Here we pull the camera and distortion matrices from the calibration file.
-	# Note : we also have to specify the data type to retrieve ('mat') otherwise we only get a 'None' FileNode object back instead of a matrix
-	cameraMatrix = cv_file.getNode("camera_matrix").mat()		# Grab the camera calibration matrix
-	distCoeffs = cv_file.getNode("dist_coeff").mat()			# Grab the camera distortion matrix
+	fourcc = cv2.VideoWriter_fourcc(*"mp4v")						# Specify the codec used to write the new video
+	out_loc = video_loc_dir + 'aruco_output.mp4'					# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
+	out_res = (width, height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
+	out = cv2.VideoWriter(out_loc, fourcc , fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
 	# Set up the data storage variables to be appended or updated through the algorithm's loop.
-	pose_transformation = []									# This is the list which will store the pose transformation values (3x translation, 3x rotation)
-	frame_count = 0												# Frame counter, to be used to provide the user with a % completion measure during processing
+	pose_transformation = []										# This is the list which will store the pose transformation values (3x translation, 3x rotation)
+	frame_count = 0													# Frame counter, to be used to provide the user with a % completion measure during processing
 
 	print('')
 	print('Processing video. Press \'q\' to quit. Processed video will be saved saved to {0}'.format(out_loc))
@@ -137,7 +171,7 @@ def get_pose(calib_loc, video_loc):
 	# When everything done, release the capture
 	headers = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3']
 	df = pd.DataFrame(pose_transformation, columns=headers)
-	df.to_csv('/'.join(video_loc.split("/")[:-1]) + "/datafile.csv", index=False)
+	df.to_csv('/'.join(video_loc.split("/")[:-1]) + '/datafile_{0}p_{1}fps.csv'.format(source_height, fps), index=False)
 	# file.close()
 	cap.release()
 	out.release()
@@ -149,6 +183,12 @@ def get_pose(calib_loc, video_loc):
 
 
 if __name__ == "__main__":
-	calib_loc = sys.argv[1]  # Specify location of calibration file you wish to use. It will save calibration data in the same location.
-	video_loc = sys.argv[2]  # Specify location of video file containing the aruco marker which you wish to extract the pose of.
+	try:
+		# Specify location of calibration file you wish to use. It will save calibration data in the same location.
+		calib_loc = sys.argv[1]
+		# Specify location of video file containing the aruco marker which you wish to extract the pose of.
+		video_loc = sys.argv[2]
+	except:
+		pass
+
 	get_pose(calib_loc, video_loc)

@@ -1,7 +1,9 @@
+# Updated 5/5/2020
+# THIS IS INCOMPLETE AS OF 5/5/2020
 # This function computes the estimated state of a process using Kalman filtering.
 # The state measurements must be supplied via .csv as an input parameter when executing the script.
 # i.e.
-# > $ ipython -i 2D_Kalman_specify_loc.py ~/DESKTOP/Photos/datafile.csv
+# > $ ipython 3D_Kalman_specify_loc.py ~/DESKTOP/Photos/datafile.csv
 
 import pandas as pd
 import numpy as np
@@ -11,7 +13,7 @@ from filterpy.kalman import KalmanFilter
 import os
 import sys
 
-datafile = '/home/josh/ComputerVision/kalman/datafile_720p_5.0fps.csv'
+datafile = '/home/josh/ComputerVision/kalman/datafile_720p_10.0fps_xonly.csv'
 
 def estimate_pose(datafile):
 	df = pd.read_csv(datafile)											# Columns should already be specified as ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3'] when the datafile is written.
@@ -23,10 +25,10 @@ def estimate_pose(datafile):
 	df['dt'] = df['Time (s)'].diff()									# Add a column of time differentials (dt) between measurements
 	df['dt'] = df['dt'].fillna(df['dt'].mean())
 
-	# df['t1_noise'] = [i + np.random.normal(0, 0.0325) for i in df['t1']]	# Inject gaussian noise into t1
-	# df['t2_noise'] = [i + np.random.normal(0, 0.0325) for i in df['t2']]	# Inject gaussian noise into t2
+	df['t1_noise'] = [i + np.random.normal(0, 0.00655) for i in df['t1']]	# Inject gaussian noise into t1
+	df['t2_noise'] = [i + np.random.normal(0, 0.00655) for i in df['t2']]	# Inject gaussian noise into t2
 
-	zs = df[['t1', 't2']].values										# Create a Numpy array of the measurements for use in the Kalman filter
+	zs = df[['t1_noise', 't2_noise']].values										# Create a Numpy array of the measurements for use in the Kalman filter
 
 
 	# -----------------------------------------------------------------
@@ -34,13 +36,13 @@ def estimate_pose(datafile):
 	# -----------------------------------------------------------------
 	# P = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Initial state covariance (expected variance of each state variable). Should be of size NxN for N tracked states.
 	# P = np.eye(6)*9.0E-6
-	P = np.array([[1E-3,		 0,		 0,		 0,		 0,		 0],  # x
-				  [		0,	  1E-1,		 0,		 0,		 0,		 0],  # xdot
-				  [		0,		 0,		10,		 0,		 0,		 0],  # xdotdot
-				  [		0,		 0,		 0,	  1E-3,		 0,		 0],  # y
-				  [		0,		 0,		 0,		 0,	  1E-1,		 0],  # ydot
-				  [		0,		 0,		 0,		 0,		 0,		10]]) # ydotdot
-	# P = np.zeros([6,6])
+	P = np.array([[9.0E-4,		 0,		 0,		 0,		 0,		 0],  # x
+				  [		0,	9.0E-2,		 0,		 0,		 0,		 0],  # xdot
+				  [		0,		 0,	9.0E-0,		 0,		 0,		 0],  # xdotdot
+				  [		0,		 0,		 0,	9.0E-4,		 0,		 0],  # y
+				  [		0,		 0,		 0,		 0,	9.0E-2,		 0],  # ydot
+				  [		0,		 0,		 0,		 0,		 0,	9.0E-0]]) # ydotdot
+
 
 	# -----------------------------------------------------------------
 	# PROCESS NOISE COVARIANCE MATRIX (Q)
@@ -57,8 +59,6 @@ def estimate_pose(datafile):
 	# For a 2d constant acceleration model [x  x' x'' y  y' y''], dim=3, block_size=2.
 	# For a 3d constant acceleration model with rotation, [x  x' x'' y  y' y'' r  r' r''], dim=3, block_size=3.
 
-	# from filterpy.common import Q_continuous_white_noise
-	# Q = Q_continuous_white_noise(dim=6, dt=df['dt'].mean(), spectral_density=1)
 	from filterpy.common import Q_discrete_white_noise
 	Q = Q_discrete_white_noise(dim=3, dt=df['dt'].mean(), var=2.35, block_size=2)
 
@@ -66,8 +66,8 @@ def estimate_pose(datafile):
 	# -----------------------------------------------------------------
 	# MEASUREMENT COVARIANCE MATRIX (R)
 	# -----------------------------------------------------------------
-	R = np.array([[1.0E-3, 			 0],								# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
-				  [		0, 		1.0E-3]])
+	R = np.array([[1.0, 			 0],								# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
+				  [		0, 		1.0]])
 
 
 	# -----------------------------------------------------------------
@@ -134,11 +134,6 @@ def estimate_pose(datafile):
 	# f, ax = plt.subplots(3, sharex=True)
 	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration']
 	x_filt['Time (s)'] = df['Time (s)']
-
-	# Short amount of data
-	# df_short = pd.DataFrame(df[['Time (s)', 't1_noise', 't2_noise']][0:120])
-	# x_filt_short = pd.DataFrame(x_filt[['Time (s)', 'X Position', 'Y Position']][0:120])
-
 	total_time = np.round(x_filt['Time (s)'].iloc[-1],1)
 	framerate = np.round(df.count()[0]/x_filt['Time (s)'].iloc[-1], 2)
 	# x_filt.plot(ax=ax[0], x='Time (s)', y='Position')
@@ -151,17 +146,14 @@ def estimate_pose(datafile):
 	plt.suptitle('Measured Position with Kalman Estimate', y=0.98, fontsize=16)
 	plt.title('Total Time: {} sec, Framerate: {} fps'.format(total_time, framerate), fontsize=12)
 	# plt.title('Measured Position with Kalman Estimate\nTotal Time: {} sec'.format(np.round(x_filt['Time (s)'].iloc[-1],1)))
-
-	df.plot(x='t1', y='t2',
+	df.plot(x='t1_noise', y='t2_noise',
 			marker='o',
 			markersize=2,
 			linestyle='None',
 			ax=ax,
 			label='Measured')
-	
-	x_filt.plot(x='X Position', y='Y Position', 
-			ax=ax, 
-			label='Kalman Estimate')
+			
+	x_filt.plot(x='X Position', y='Y Position', ax=ax, label='Kalman Estimate')
 	ax.legend(loc='best')
 	plt.axis('equal')
 	plt.xlabel('X (m)')
