@@ -1,14 +1,14 @@
-# This script is used to extract and save pose estimation of an Aruco marker in a source video.
+# This script is used to extract and save pose estimation of an Aruco marker in a source video and also save a copy of the video with the Aruco marker pose axes drawn.
 # First, the script will run through the source video, attempt to detect a marker, then draw a coordinate frame on the marker.
 # Second, the script will resize the video (specified by the 'out_res' variable) and save a copy of the video in the same directory as the source video.
 # Lastly, a .csv file of time, translation, and rotation will be saved in the same directory as the source video.
 
 # Bookoodles of credit and praise go to Adriana Henriquez for figuring out how to do this stuff and writing the initial framework of the code.
 
-# Last update: 4/1/2020
+# Last update: 5/20/2020
 
 # PRE-USAGE, OPTIONAL:
-# Use ffmpeg to convert recorded video to acceptable size, framerate, etc., lest the processing portion of this take 5ever.
+# Use ffmpeg to convert recorded video to acceptable size, framerate, etc., or else the processing portion of this will take 5ever.
 # ex. > $ ffmpeg -ss 5 -i VID_20200328_104239.mp4 -t 84 -an -filter:v "scale=720:-1, transpose=2, fps=10" output.mp4
 # ..... will trim video by starting at 5 sec (using -ss parameter) and ending 84 seconds after (using -t parameter)
 # ..... will take *.mp4 file type input (using -i parameter)
@@ -20,13 +20,17 @@
 # ..... will save it to an output file (must complete the command with a destination)
 
 # USAGE:
-# Type the following in the unix command line:
-# >>> $ ipython -i get_pose_specify_loc [full path to camera calibration file] [full path to source video with aruco marker]
-# [full path to camera calibration file] and [full path to source video with aruco marker] MUST be specified
+# You will need to specify the camera calibration file (defaults to '../images/calib_images/calib.yaml') for whatever camera the source video was captured by.
+# If you do not have a calibration file for that camera, use the files in the '../utilities/' directory to create one.
+# You will also need to specifiy the location of the video from which you wish to extract Aruco pose.
+
+# To run, type the following in the unix command line:
+# >>> $ python getPoseAruco-postProcess.py [path to camera calibration file] [path to source video with aruco marker]
+
 
 # FUTURE WORK:
-# If either paths are not specified, default to local directory
-# Allow other options to be specified (such as output video resolution)
+# Allow other options to be specified (such as output video resolution, currently defaults to 1280x720)
+# Better filename saves (i.e. include datetime). Currently will just save as "aruco_output.mp4", potentially overwriting any file that currently exists
 
 import cv2
 import cv2.aruco as aruco
@@ -37,14 +41,17 @@ import pandas as pd
 import os
 import sys
 
+marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit conversion factor. Without it, all of the measurements would just be determined in units of marker length. At 0.0655, this means a single marker is 0.0655 m per side.
+
+# Output video size
 height = int(720)
 width = int(height * 16/9)
 
 # Default locations
-calib_loc = '/home/josh/ComputerVision/calib_images/device_nokia7/calib.yaml'
-video_loc = '/home/josh/ComputerVision/videos/output_720p_1fps.mp4'
+calib_loc = '../images/calib_images/calib.yaml'
+video_loc = '../videos/output_720p_10fps.mp4'
 
-def get_pose(calib_loc, video_loc):
+def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 	if os.path.isfile(video_loc) and os.path.isfile(calib_loc):
 		print('')
 		print('Running Aruco detection on a single image with specified location and calibration:')
@@ -133,14 +140,14 @@ def get_pose(calib_loc, video_loc):
 				# cameraMatrix and distCoeffs are the camera calibration parameters that need to be known prior to executing this function.
 				# rvecs and tvecs are the rotation and translation vectors respectively.
 				# The marker coordinate axes are centered on the middle of the marker, with the Z axis perpendicular to the marker plane.
-			rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, 0.0655, cameraMatrix, distCoeffs)
+			rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, marker_side_length, cameraMatrix, distCoeffs)
 			
 			# The aruco module provides a function to draw the coordinate axes onto the image, so pose estimation can be visually verified:
 			# Image is the input/output image where the axis will be drawn (it will normally be the same image where the markers were detected).
 			# cameraMatrix and distCoeffs are the camera calibration parameters.
 			# rvec and tvec are the pose parameters whose axis want to be drawn.
 			# The last parameter is the length of the axis, in the same unit that tvec (usually meters)
-			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 2*0.0655) #Draw Axis
+			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 2*marker_side_length) #Draw Axis
 
 			frame_time = frame_count/fps						# Calculate the elapsed time based on which frame (from the source video) you're on and what the FPS of that video is
 			

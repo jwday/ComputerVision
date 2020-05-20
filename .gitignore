@@ -1,4 +1,4 @@
 *.csv
 .vscode/
 videos/*
-calib_images/*
+images/calib_images/*

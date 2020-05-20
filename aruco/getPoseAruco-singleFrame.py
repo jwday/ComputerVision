@@ -7,26 +7,10 @@
 
 # Last update: 4/1/2020
 
-# PRE-USAGE, OPTIONAL:
-# Use ffmpeg to convert recorded video to acceptable size, framerate, etc., lest the processing portion of this take 5ever.
-# ex. > $ ffmpeg -ss 5 -i VID_20200328_104239.mp4 -t 84 -an -filter:v "scale=720:-1, transpose=2, fps=10" output.mp4
-# ..... will trim video by starting at 5 sec (using -ss parameter) and ending 84 seconds after (using -t parameter)
-# ..... will take *.mp4 file type input (using -i parameter)
-# ..... will remove audio (using -an parameter)
-# ..... will apply multiple filters to the video (using -filter:v paramter followed by a string)
-# ........... scale the video to 720 WIDTH (using the 'scale=720:-1' option)
-# ........... rotate the video 90 degrees counter-clockwise (using the 'transpose=2' option)
-# ........... downsample the framerate to 10 fps (using the 'fps=10' option)
-# ..... will save it to an output file (must complete the command with a destination)
-
 # USAGE:
 # Type the following in the unix command line:
-# >>> $ ipython -i get_pose_specify_loc [full path to camera calibration file] [full path to source video with aruco marker]
-# [full path to camera calibration file] and [full path to source video with aruco marker] MUST be specified
+# >>> $ python getPoseAruco-singleFrame.py [path to camera calibration file] [path to source image with aruco marker]
 
-# FUTURE WORK:
-# If either paths are not specified, default to local directory
-# Allow other options to be specified (such as output video resolution)
 
 import cv2
 import cv2.aruco as aruco
@@ -37,12 +21,15 @@ import pandas as pd
 import os
 import sys
 
+marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit conversion factor. Without it, all of the measurements would just be determined in units of marker length. At 0.0655, this means a single marker is 0.0655 m per side.
+
+# Output image size
 width = int(1920)
 height = int(1080)
 
 # Default locations
-calib_loc = '/home/josh/ComputerVision/calib_images/device_nokia7/calib.yaml'
-image_loc = '/home/josh/ComputerVision/images/test_frame.png'
+calib_loc = '../images/calib_images/calib.yaml'
+image_loc = '../images/test_frame.png'
 
 def get_pose(calib_loc=calib_loc, image_loc=image_loc):
 	if os.path.isfile(image_loc) and os.path.isfile(calib_loc):
@@ -91,12 +78,12 @@ def get_pose(calib_loc=calib_loc, image_loc=image_loc):
 
 	# Estimate the marker pose, draw a coordinate frame on it, then open yet another window to display it
 	print('Drawing pose axes...')
-	rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, 0.0655, cameraMatrix, distCoeffs)
+	rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, marker_side_length, cameraMatrix, distCoeffs)
 	print('')
 	print('tvecs: {0}'.format(tvec[0][0]))
 	print('rvecs: {0}'.format(rvec[0][0]))
 	print('')
-	cap_drawn = aruco.drawAxis(cap, cameraMatrix, distCoeffs, rvec, tvec, 2*0.0655)
+	cap_drawn = aruco.drawAxis(cap, cameraMatrix, distCoeffs, rvec, tvec, 2*marker_side_length)
 	cv2.namedWindow('axes', cv2.WINDOW_NORMAL)
 	cv2.resizeWindow('axes', width, height)
 	cv2.imshow('axes', cap_drawn)

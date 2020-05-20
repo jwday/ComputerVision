@@ -7,6 +7,8 @@ cap = cv2.VideoCapture(0)
 cbrow = 6
 cbcol = 9
 
+loc = '../images/calib_images'
+
 ####---------------------- CAMERA CALIBRATION USING CHECKERBOARD ---------------------------
 # termination criteria for the iterative algorithm
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -22,7 +24,7 @@ imgpoints = [] # 2d points in image plane.
 
 # iterating through all calibration images
 # in the folder
-images = glob.glob('calib_images/*.jpg')
+images = glob.glob(loc + '/*.jpg')
 
 for fname in images:
     img = cv2.imread(fname)
