@@ -67,13 +67,16 @@ def on_connect(client, userdata, flags, rc):
 
 	# Subscribing in on_connect() means that if we lose the connection and
 	# reconnect then subscriptions will be renewed.
-	client.subscribe("propel")
-	client.subscribe("timedPropel")
-	client.subscribe("CV")
+	# client.subscribe("propel")
+	# client.subscribe("timedPropel")
+	# client.subscribe("CV")
+	client.subscribe([("propel",2), ("timedPropel",2), ("CV",2)])
 	
         
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
+	global recordBool
+	msg.payload = msg.payload.decode("utf-8")
 	print("incoming: " + msg.topic + " " + str(msg.payload))
 
 	if msg.topic == "singleValveOn":
@@ -84,9 +87,11 @@ def on_message(client, userdata, msg):
 	
 	if msg.topic == "CV":
 		if msg.payload == "recordON":
+			print("Go!")
 			recordBool = True
 			track_and_record(calib_loc, video_loc)
 		if msg.payload == "recordOFF":
+			print("Stop!")
 			recordBool = False
 
 
@@ -141,13 +146,20 @@ def setup_recording(calib_loc=calib_loc, video_loc=video_loc):
 # CV LOOP
 # -----------------------------------------------------------------------------
 def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
+	print("Getting ready....recordBool is " + str(recordBool))
 	start_time = datetime.datetime.utcnow().timestamp()
 	while(recordBool):												# while(True) means "run as fast as you can".
+		print("Going!")
 		# Capture frame-by-frame
-		ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
+		try:
+			ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
+		except:
+			print("Couldn't read")
+			break
 
-		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've stopped recording)
-			break												# Kill the loop
+		# if (not ret):											# If cap.read() doesn't return anything (i.e. if you've stopped recording)
+		# 	print("\"ret\" is FALSE")
+		# 	break												# Kill the loop
 
 		blur = cv2.GaussianBlur(frame, (11,11), 0)				# As part of the Aruco marker detection algorithm, we blur the frame
 		gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)			# Next, we make the frame grayscale
@@ -155,6 +167,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 		parameters = aruco.DetectorParameters_create()			# Not sure what this step does but Adriana put it in and I trust her
 
 		try:
+			print("Trying to detect corners...")
 			# Here is the function that does all the hard work of actually detecting markers
 			corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)	# List of ids and the corners belonging to each id
 
@@ -189,6 +202,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 
 		except:
 			# If any of the functions in the loop throw an error, just write NaNs to this data point and move on
+			print("Couldn't detect corners!")
 			time_now = datetime.datetime.utcnow().timestamp()
 			frame_time = time_now - start_time
 			pose_transformation.append([frame_time, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, valve_status])
@@ -209,6 +223,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 			print('')
 			break
 
+	print("Stopping!")
 	# When everything done, release the capture and close it all out
 	headers = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3', 'valveStatus']
 	df = pd.DataFrame(pose_transformation, columns=headers)
@@ -239,6 +254,7 @@ if __name__ == "__main__":
 
 	# Connect!
 	client.connect("localhost", 1883, 60)	# (host, port, keepalive)
-	client.loop_start()						# Using loop_start() rather than loop_forver() because it is non-blocking
 	setup_recording(calib_loc, video_loc)
 
+	while True:
+		client.loop()
