@@ -45,7 +45,7 @@ import paho.mqtt.client as mqtt
 marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit conversion factor. Without it, all of the measurements would just be determined in units of marker length. At 0.0655, this means a single marker is 0.0655 m per side.
 
 # Output video size
-height = int(720)
+height = int(480)
 width = int(height * 16/9)
 
 # Default filenames and locations
@@ -115,9 +115,9 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 	print('')
 
 	# Here we define the codec and create a VideoWriter object to resave the video (with a coordinate frame drawn on the Aruco marker and reduced in size).
-	fourcc = cv2.VideoWriter_fourcc(*"mp4v")						# Specify the codec used to write the new video
-	out_loc = video_loc + datetime_stamp + '_record.mp4'			# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
-	out_res = (width, height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
+	fourcc = cv2.VideoWriter_fourcc(*"XVID")						# Specify the codec used to write the new video
+	out_loc = video_loc + datetime_stamp + '_record.avi'			# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
+	out_res = (source_width, source_height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
 	out = cv2.VideoWriter(out_loc, fourcc, fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
 	# Set up the data storage variables to be appended or updated through the algorithm's loop.
@@ -168,25 +168,27 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 			# cameraMatrix and distCoeffs are the camera calibration parameters.
 			# rvec and tvec are the pose parameters whose axis want to be drawn.
 			# The last parameter is the length of the axis, in the same unit that tvec (usually meters)
-			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 2*marker_side_length) #Draw Axis
-
+			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 0.5*marker_side_length) #Draw Axis
+			print("pose")
+                        
 			# Append tvecs and rvecs to the pose_transformation list, to be saved to a csv after the loop is complete
-			pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]], valve_status)
+			pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2], valve_status])
 		
+
 		except:
 			# If any of the functions in the loop throw an error, just write NaNs to this data point and move on
-			pose_transformation.append([frame_time, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+			pose_transformation.append([frame_time, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, valve_status])
 			pass
 			
 		# Display the captured frame with reduced size (in case your source video has larger resolution than your monitor)
-		b =  cv2.resize(frame, out_res, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)	# Resize the frame from the source video and instantiate it as a new object 'b'
-		cv2.namedWindow('Detected Aruco Markers', cv2.WINDOW_AUTOSIZE)				# Create a window to display the modified frames in
-		cv2.resizeWindow('Detected Aruco Markers', out_res)							# Resize the window by explicitly defining its resolution (without this it MAY appear teeny-tiny for no apparent reason)
-		cv2.imshow('Detected Aruco Markers', b)										# SHOW ME WHAT YOU GOT.
+#		b =  cv2.resize(frame, out_res, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)	# Resize the frame from the source video and instantiate it as a new object 'b'
+#		cv2.namedWindow('Detected Aruco Markers', cv2.WINDOW_AUTOSIZE)				# Create a window to display the modified frames in
+#		cv2.resizeWindow('Detected Aruco Markers', out_res)							# Resize the window by explicitly defining its resolution (without this it MAY appear teeny-tiny for no apparent reason)
+		cv2.imshow('Detected Aruco Markers', frame)										# SHOW ME WHAT YOU GOT.
 
 		# ...and write the result to the output video object 'out'.
 		# Just to clarify: 'out' is a VideoWriter object. A single frame object 'b' is written to the VideoWriter object 'out'.
-		out.write(b)
+		out.write(frame)
 
 		# Press 'q' to quit early. Don't worry, the video has already been written to 'out'.
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -203,7 +205,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 
 	print('')
 	print('')
-	print('Process complete.'))
+	print('Process complete.')
 	print('Video saved to {0}'.format(out_loc))
 
 
@@ -217,7 +219,7 @@ if __name__ == "__main__":
 		pass
 
 	# Set up MQTT client
-	client = mqtt.Client("computervision", protocol=MQTTv31)
+	client = mqtt.Client("computervision", protocol=mqtt.MQTTv31)
 	client.on_connect = on_connect
 	client.on_message = on_message
 
