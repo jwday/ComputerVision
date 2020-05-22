@@ -50,12 +50,12 @@ width = int(height * 16/9)
 
 # Default filenames and locations
 calib_loc = '../images/calib_images/calib.yaml'
-video_loc = '../videos/' 
+video_loc = '../videos/'
 
 # Datetime stamp to uniquely label video filename
 datetime_stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")	# Format datetime stamp to label unique data files
 valve_status = 'Off'	# String to identify what the valve status is (will be updated later to specify commanded DIRECTION rather than valve ID)
-
+recordBool = False
 
 
 # -----------------------------------------------------------------------------
@@ -69,7 +69,9 @@ def on_connect(client, userdata, flags, rc):
 	# reconnect then subscriptions will be renewed.
 	client.subscribe("propel")
 	client.subscribe("timedPropel")
-
+	client.subscribe("CV")
+	
+        
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
 	print("incoming: " + msg.topic + " " + str(msg.payload))
@@ -79,21 +81,26 @@ def on_message(client, userdata, msg):
 	
 	elif msg.topic == "singleValveOff":
 		valve_status = 'Off'
+	
+	if msg.topic == "CV":
+		if msg.payload == "recordON":
+			recordBool = True
+			track_and_record(calib_loc, video_loc)
+		if msg.payload == "recordOFF":
+			recordBool = False
 
-# -----------------------------------------------------------------------------
-# CV LOOP
-# -----------------------------------------------------------------------------
-def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
-	if os.path.isfile(calib_loc):
+
+def setup_recording(calib_loc=calib_loc, video_loc=video_loc):
+	if os.path.isfile(calib_loc) & os.path.isdir(video_loc):
 		print('')
-		print('Running Aruco detection on a single image with specified location and calibration:')
-		print('	Calibration file location: {0}'.format(calib_loc))
-		print('	Video save location: {0}'.format(video_loc))
+		print('Readying Aruco detection on a live webcam feed using the following settings:')
+		print('	Calibration file location: {0}'.format(os.path.abspath(calib_loc)))
+		print('	Video save location: {0}'.format(os.path.abspath(video_loc)))
 		print('')
 	else:
 		print('')
-		print('*** Calibration file path is invalid. ***')
-		print('	Specified calibration file location: {0}'.format(calib_loc))
+		print('*** One or more file path is invalid. ***')
+		print('	Specified calibration file location: {0}'.format(os.path.abspath(calib_loc)))
 		print('')
 		sys.exit()
 
@@ -118,22 +125,26 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 	fourcc = cv2.VideoWriter_fourcc(*"XVID")						# Specify the codec used to write the new video
 	out_loc = video_loc + datetime_stamp + '_record.avi'			# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
 	out_res = (source_width, source_height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
-	out = cv2.VideoWriter(out_loc, fourcc, fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
+	out = cv2.VideoWriter(out_loc, fourcc, 5, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
 	# Set up the data storage variables to be appended or updated through the algorithm's loop.
 	pose_transformation = []										# This is the list which will store the pose transformation values (3x translation, 3x rotation)
 
 	print('')
-	print('Recording and processing live video. Press \'q\' to quit. Processed video will be saved saved to {0}'.format(out_loc))
+	print('Ready to record and process live video. Processed video will be saved saved to {0}'.format(os.path.abspath(calib_loc)))
+	print("Send message 'recordON' to topic 'CV' to begin.")
+	print("Send message 'recordOFF' to topic 'CV' to stop.")
 	print('')
 
+
+# -----------------------------------------------------------------------------
+# CV LOOP
+# -----------------------------------------------------------------------------
+def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 	start_time = datetime.datetime.utcnow().timestamp()
-	while(True):												# while(True) means "run as fast as you can".
+	while(recordBool):												# while(True) means "run as fast as you can".
 		# Capture frame-by-frame
 		ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
-
-		time_now = datetime.datetime.utcnow().timestamp()
-		frame_time = time_now - start_time						# Calculate the elapsed time using datetime()
 
 		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've stopped recording)
 			break												# Kill the loop
@@ -150,7 +161,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 			# This is the function that highlights a detected marker(s)
 			# The inputs are the image ('frame'), the detected corners ('corners'), and the ids of the detected markers ('ids')
 			# This function is only provided for visualization and its use can be omitted without repercussion
-			aruco.drawDetectedMarkers(frame, corners, ids)
+			# aruco.drawDetectedMarkers(frame, corners, ids)
 			
 			# This is the part where we actually estimate pose of each marker
 			# We need to use the camera calibration information in order to correctly estimate the pose after correcting for camera distortion
@@ -168,15 +179,18 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 			# cameraMatrix and distCoeffs are the camera calibration parameters.
 			# rvec and tvec are the pose parameters whose axis want to be drawn.
 			# The last parameter is the length of the axis, in the same unit that tvec (usually meters)
-			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 0.5*marker_side_length) #Draw Axis
-			print("pose")
-                        
-			# Append tvecs and rvecs to the pose_transformation list, to be saved to a csv after the loop is complete
+			# aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 0.5*marker_side_length) #Draw Axis
+			
+			# Append frame_time, tvecs, rvecs, and valve_status to the pose_transformation list, to be saved to a csv after the loop is complete
+			time_now = datetime.datetime.utcnow().timestamp()
+			frame_time = time_now - start_time
 			pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2], valve_status])
 		
 
 		except:
 			# If any of the functions in the loop throw an error, just write NaNs to this data point and move on
+			time_now = datetime.datetime.utcnow().timestamp()
+			frame_time = time_now - start_time
 			pose_transformation.append([frame_time, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, valve_status])
 			pass
 			
@@ -184,13 +198,13 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 #		b =  cv2.resize(frame, out_res, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)	# Resize the frame from the source video and instantiate it as a new object 'b'
 #		cv2.namedWindow('Detected Aruco Markers', cv2.WINDOW_AUTOSIZE)				# Create a window to display the modified frames in
 #		cv2.resizeWindow('Detected Aruco Markers', out_res)							# Resize the window by explicitly defining its resolution (without this it MAY appear teeny-tiny for no apparent reason)
-		cv2.imshow('Detected Aruco Markers', frame)										# SHOW ME WHAT YOU GOT.
+#		cv2.imshow('Detected Aruco Markers', frame)										# SHOW ME WHAT YOU GOT.
 
 		# ...and write the result to the output video object 'out'.
 		# Just to clarify: 'out' is a VideoWriter object. A single frame object 'b' is written to the VideoWriter object 'out'.
-		out.write(frame)
+#		out.write(frame)
 
-		# Press 'q' to quit early. Don't worry, the video has already been written to 'out'.
+		# Press 'q' to quit early. Don't worry, the video has already been written to 'out' BUT THE DATA FILE HASN'T
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			print('')
 			break
@@ -226,6 +240,5 @@ if __name__ == "__main__":
 	# Connect!
 	client.connect("localhost", 1883, 60)	# (host, port, keepalive)
 	client.loop_start()						# Using loop_start() rather than loop_forver() because it is non-blocking
+	setup_recording(calib_loc, video_loc)
 
-	# Begin tracking and recording from webcam (device 0)
-	track_and_record(calib_loc, video_loc)
