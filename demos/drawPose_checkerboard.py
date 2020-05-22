@@ -15,7 +15,7 @@ objp[:,:2] = np.mgrid[0:cbcol,0:cbrow].T.reshape(-1,2)
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
-images = glob.glob('calib_images/*.jpg')
+images = glob.glob('../images/calib_images/device_webcam/*.jpg')
 
 for fname in images:
     img = cv2.imread(fname)
@@ -53,7 +53,7 @@ objp[:,:2] = np.mgrid[0:cbcol,0:cbrow].T.reshape(-1,2)
 
 axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
-for fname in glob.glob('calib_images/*.jpg'):
+for fname in glob.glob('../images/calib_images/device_webcam/*.jpg'):
     img = cv2.imread(fname)
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     ret, corners = cv2.findChessboardCorners(gray, (cbcol,cbrow),None)
