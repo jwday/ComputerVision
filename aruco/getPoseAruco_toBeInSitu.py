@@ -47,32 +47,26 @@ marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit co
 height = int(720)
 width = int(height * 16/9)
 
-# Default locations
+# Default filenames and locations
 calib_loc = '../images/calib_images/calib.yaml'
-video_loc = '../videos/output_720p_10fps.mp4'
+video_loc = '../videos/' 
+
+# Datetime stamp to uniquely label video filename
+datetime_stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")	# Format datetime stamp to label unique data files
 
 def get_pose(calib_loc=calib_loc, video_loc=video_loc):
-	if os.path.isfile(video_loc) and os.path.isfile(calib_loc):
+	if os.path.isfile(calib_loc):
 		print('')
-		print('Running Aruco detection on a video with specified location and calibration:')
-		print('	Video location: {0}'.format(video_loc))
+		print('Running Aruco detection on a single image with specified location and calibration:')
 		print('	Calibration file location: {0}'.format(calib_loc))
+		print('	Video save location: {0}'.format(video_loc))
 		print('')
 	else:
 		print('')
-		print('*** One or more of your file paths are invalid. ***')
-		print('	Specified video location: {0}'.format(video_loc))
+		print('*** Calibration file path is invalid. ***')
 		print('	Specified calibration file location: {0}'.format(calib_loc))
 		print('')
-		if not os.path.isfile(video_loc):
-			print('Specified video location is not valid')
-		if not os.path.isfile(calib_loc):
-			print('Specified calibration file location is not valid')
-		print('')
 		sys.exit()
-
-	# Here we set everything up by pulling the video directory so we can save a new file to it later. Also we pull the calibration matrices for the camera used to capture the source video. If you use a new camera, you'll have to get a new calibration matrix.
-	video_loc_dir = '/'.join(video_loc.split('/')[:-1])+'/'  	# Grab the directory of the source video. (ex. if 'video_loc' is '/mnt/c/Users/Josh/Desktop/Photos/output.mp4', this will return '/mnt/c/Users/Josh/Desktop/Photos/')
 
 	# Import calibration items (camera matrix and distortion coefficients)
 	print('Importing calibration file...')	
@@ -83,38 +77,36 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 	print('')
 
 	# Here we instantiate a capture object that we'll pass into the Aruco detection algorithm. Also we grab the total number of frames to provide the user with a % completion measure during processing.
-	cap = cv2.VideoCapture(video_loc)								# Instantiate video capture object 'cap'
+	cap = cv2.VideoCapture(0)										# Instantiate video capture object 'cap' using DEVICE 0
 	fps = cap.get(cv2.CAP_PROP_FPS)									# Grab the FPS of the source video so you can properly calculate elapsed process time
-	no_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))				# Grab the total number of frames in the source video
 	source_width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) 			# Grab the source video width
 	source_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))			# Grab the source video height
-	print('Source size: {0} x {1} px'.format(source_width, source_height))
+	print('Source resolution: {0} x {1} px'.format(source_width, source_height))
 	print('Source fps: {}'.format(fps))
-	print('Source frames: {}'.format(no_frames))
 	print('')
 
 	# Here we define the codec and create a VideoWriter object to resave the video (with a coordinate frame drawn on the Aruco marker and reduced in size).
 	fourcc = cv2.VideoWriter_fourcc(*"mp4v")						# Specify the codec used to write the new video
-	out_loc = video_loc_dir + 'aruco_output.mp4'					# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
+	out_loc = video_loc + datetime_stamp + '_record.mp4'			# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
 	out_res = (width, height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
-	out = cv2.VideoWriter(out_loc, fourcc , fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
+	out = cv2.VideoWriter(out_loc, fourcc, fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
 	# Set up the data storage variables to be appended or updated through the algorithm's loop.
 	pose_transformation = []										# This is the list which will store the pose transformation values (3x translation, 3x rotation)
-	frame_count = 0													# Frame counter, to be used to provide the user with a % completion measure during processing
 
 	print('')
-	print('Processing video. Press \'q\' to quit. Processed video will be saved saved to {0}'.format(out_loc))
+	print('Recording and processing live video. Press \'q\' to quit. Processed video will be saved saved to {0}'.format(out_loc))
 	print('')
 
-	while(True):
+	start_time = datetime.datetime.utcnow().timestamp()
+	while(True):												# while(True) means "run as fast as you can".
 		# Capture frame-by-frame
 		ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
-		frame_count += 1										# Increment the frame counter
-		percent_complete = int(100*(frame_count/no_frames))		# Calculate % completion
-		print('\rFrame: {0}/{1} ({2}%)'.format(frame_count, no_frames, percent_complete), end='')	# Print % completion, using \r and end='' to overwrite the previously displayed text (so it doesn't spam the terminal)
 
-		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've reached the end of the source video)
+		time_now = datetime.datetime.utcnow().timestamp()
+		frame_time = time_now - start_time						# Calculate the elapsed time using datetime()
+
+		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've stopped recording)
 			break												# Kill the loop
 
 		blur = cv2.GaussianBlur(frame, (11,11), 0)				# As part of the Aruco marker detection algorithm, we blur the frame
@@ -149,44 +141,41 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 			# The last parameter is the length of the axis, in the same unit that tvec (usually meters)
 			aruco.drawAxis(frame, cameraMatrix, distCoeffs, rvec, tvec, 2*marker_side_length) #Draw Axis
 
-			frame_time = frame_count/fps						# Calculate the elapsed time based on which frame (from the source video) you're on and what the FPS of that video is
-			
 			# Append tvecs and rvecs to the pose_transformation list, to be saved to a csv after the loop is complete
 			pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]])
 		
-			
 		except:
 			# If any of the functions in the loop throw an error, just write NaNs to this data point and move on
-			frame_time = frame_count/fps						# Calculate the elapsed time based on which frame (from the source video) you're on and what the FPS of that video is
-			# Append tvecs and rvecs to the pose_transformation list, to be saved to a csv after the loop is complete
 			pose_transformation.append([frame_time, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
 			pass
 			
-		# Display the result with reduced size (in case your source video has larger resolution than your monitor)
-		b =  cv2.resize(frame, out_res, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)	# Resize the frame from the source video and save it as a new object 'b'
+		# Display the captured frame with reduced size (in case your source video has larger resolution than your monitor)
+		b =  cv2.resize(frame, out_res, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)	# Resize the frame from the source video and instantiate it as a new object 'b'
 		cv2.namedWindow('Detected Aruco Markers', cv2.WINDOW_AUTOSIZE)				# Create a window to display the modified frames in
 		cv2.resizeWindow('Detected Aruco Markers', out_res)							# Resize the window by explicitly defining its resolution (without this it MAY appear teeny-tiny for no apparent reason)
 		cv2.imshow('Detected Aruco Markers', b)										# SHOW ME WHAT YOU GOT.
 
-		# ...and write the result to the output video object 'out'
+		# ...and write the result to the output video object 'out'.
+		# Just to clarify: 'out' is a VideoWriter object. A single frame object 'b' is written to the VideoWriter object 'out'.
 		out.write(b)
 
 		# Press 'q' to quit early. Don't worry, the video has already been written to 'out'.
 		if cv2.waitKey(1) & 0xFF == ord('q'):
+			print('')
 			break
 
-	# When everything done, release the capture
+	# When everything done, release the capture and close it all out
 	headers = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3']
 	df = pd.DataFrame(pose_transformation, columns=headers)
-	df.to_csv('/'.join(video_loc.split("/")[:-1]) + '/datafile_{0}p_{1}fps.csv'.format(source_height, fps), index=False)
-	# file.close()
+	df.to_csv(video_loc + datetime_stamp + '_datafile.csv', index=False)
 	cap.release()
 	out.release()
 	cv2.destroyAllWindows()
 
 	print('')
 	print('')
-	print('Process complete. Video saved to {0}'.format(out_loc))
+	print('Process complete.'))
+	print('Video saved to {0}'.format(out_loc))
 
 
 if __name__ == "__main__":

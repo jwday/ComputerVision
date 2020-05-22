@@ -33,29 +33,31 @@ marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit co
 calib_loc = '../images/calib_images/calib.yaml'
 
 def get_pose(calib_loc=calib_loc):
-	cap = cv2.VideoCapture(0)
-	fps = cap.get(5)
-	start_time = datetime.datetime.utcnow().timestamp()
-	file = open(start_time + "_datafile.csv", "w")
+	# Here we instantiate a capture object that we'll pass into the Aruco detection algorithm.
+	cap = cv2.VideoCapture(0) 											# '0' means USB device 0
+	fps = cap.get(5)													# Get framerate? Not sure how this will turn out for a physical device
+	datetime_stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")	# Format datetime stamp to label unique data files
 
 	######################
 	# Define the codec and create VideoWriter object
-	# fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-	# out = cv2.VideoWriter('output.mov',fourcc, fps, (1280,960), True)
+	fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+	out = cv2.VideoWriter(datetime_stamp + 'output.mp4', fourcc, fps, (1280,720))
 	######################
 
 	# load in camera matrix parameters for pose
 	# File storage in OpenCV
-	cv_file = cv2.FileStorage(calib_loc, cv2.FILE_STORAGE_READ)
+	file = open(datetime_stamp + "_datafile.csv", "w")					
 
 	# Note : we also have to specify the type
 	# to retrieve otherwise we only get a 'None'
 	# FileNode object back instead of a matrix
+	cv_file = cv2.FileStorage(calib_loc, cv2.FILE_STORAGE_READ)
 	cameraMatrix = cv_file.getNode("camera_matrix").mat()
 	distCoeffs = cv_file.getNode("dist_coeff").mat()
 
+	start_time = datetime.datetime.utcnow().timestamp()					# Format start time to be used for data point time stamps
 
-	def draw(img, corners, imgpts):
+	def draw(img, corners, imgpts):										# I don't think this function is used?
 		corner = tuple(corners[0].ravel())
 		img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
 		img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
