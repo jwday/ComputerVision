@@ -132,8 +132,6 @@ def setup_recording(calib_loc=calib_loc, video_loc=video_loc):
 	out_res = (source_width, source_height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
 	out = cv2.VideoWriter(out_loc, fourcc, 5, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
-	# Set up the data storage variables to be appended or updated through the algorithm's loop.
-	pose_transformation = []										# This is the list which will store the pose transformation values (3x translation, 3x rotation)
 
 	print('')
 	print('Ready to record and process live video. Processed video will be saved saved to {0}'.format(os.path.abspath(calib_loc)))
@@ -145,14 +143,18 @@ def setup_recording(calib_loc=calib_loc, video_loc=video_loc):
 # -----------------------------------------------------------------------------
 # CV LOOP
 # -----------------------------------------------------------------------------
-def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
+def track_and_record(capture, calib_loc=calib_loc, video_loc=video_loc):
 	print("Getting ready....recordBool is " + str(recordBool))
 	start_time = datetime.datetime.utcnow().timestamp()
+
+	# Set up the data storage variables to be appended or updated through the algorithm's loop.
+	pose_transformation = []										# This is the list which will store the pose transformation values (3x translation, 3x rotation)
+
 	while(recordBool):												# while(True) means "run as fast as you can".
 		print("Going!")
 		# Capture frame-by-frame
 		try:
-			ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
+			ret, frame = capture.read()									# Read the next frame in the buffer and return it as an object
 		except:
 			print("Couldn't read")
 			break
@@ -228,7 +230,7 @@ def track_and_record(calib_loc=calib_loc, video_loc=video_loc):
 	headers = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3', 'valveStatus']
 	df = pd.DataFrame(pose_transformation, columns=headers)
 	df.to_csv(video_loc + datetime_stamp + '_datafile.csv', index=False)
-	cap.release()
+	capture.release()
 	out.release()
 	cv2.destroyAllWindows()
 

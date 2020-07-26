@@ -1,5 +1,5 @@
 # This script reads a set of calibration images stored in a folder supplied as an argument.
-# The calibration files must be *.jpg because that's what this function currently looks for.
+# The calibration files must be *.png because that's what this function currently looks for.
 # When taking pictures to be used for calibration, use the 7x10 generalized checkerboard image supplied.
 
 import sys
@@ -31,9 +31,9 @@ def calibrate(loc):
 	objpoints = [] # 3d point in real world space
 	imgpoints = [] # 2d points in image plane.
 
-	calib_files = loc + "/*.jpg"
+	calib_files = loc + "/*.png"
 	images = glob.glob(calib_files)
-	print("Running calibration analysis...")
+	print("Extracting chessboard points...")
 	for fname in images:
 		img = cv2.imread(fname)														# Read the image
 		gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)									# Grayscale the image
@@ -50,10 +50,11 @@ def calibrate(loc):
 
 			# Draw and display the corners
 			img = cv2.drawChessboardCorners(img, (cbcol, cbrow), corners2,ret)
-			cv2.imshow('img',img)
+			cv2.imshow('img', img)
 			cv2.waitKey(WAIT_TIME)
 
 	cv2.destroyAllWindows()
+	print("Generating calibration matrix...")
 	ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
 	# ---------- Saving the calibration -----------------

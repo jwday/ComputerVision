@@ -40,6 +40,7 @@ import sys
 import pandas as pd
 import os
 import sys
+import math
 
 marker_side_length = 0.0655  # Specify size of marker. This is a scaling/unit conversion factor. Without it, all of the measurements would just be determined in units of marker length. At 0.0655, this means a single marker is 0.0655 m per side.
 
@@ -117,11 +118,21 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've reached the end of the source video)
 			break												# Kill the loop
 
-		blur = cv2.GaussianBlur(frame, (11,11), 0)				# As part of the Aruco marker detection algorithm, we blur the frame
+		blur = cv2.GaussianBlur(frame, (7,7), 0)				# As part of the Aruco marker detection algorithm, we blur the frame
 		gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)			# Next, we make the frame grayscale
 		aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250) 	# Define the shape of the Aruco marker we are trying to detect (6X6_250 is very common)
 		parameters = aruco.DetectorParameters_create()			# Not sure what this step does but Adriana put it in and I trust her
-
+		parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+		# parameters.polygonalApproxAccuracyRate = 0.05
+		parameters.cornerRefinementWinSize = 5
+		parameters.cornerRefinementMinAccuracy = 0.01
+		parameters.perspectiveRemovePixelPerCell = 8
+		parameters.maxErroneousBitsInBorderRate = 0.04
+		parameters.errorCorrectionRate = 0.2
+		# parameters.adaptiveThreshWinSizeMin= 170
+		# parameters.adaptiveThreshWinSizeMax= 255
+		# parameters.adaptiveThreshWinSizeStep= 3
+		
 		try:
 			# Here is the function that does all the hard work of actually detecting markers
 			corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)	# List of ids and the corners belonging to each id
@@ -134,14 +145,19 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 			# This is the part where we actually estimate pose of each marker
 			# We need to use the camera calibration information in order to correctly estimate the pose after correcting for camera distortion
 			# The camera pose with respect to a marker is the 3d transformation FROM the marker coordinate system TO the camera coordinate system
-			# It is specified by a rotation and a translation vector (rvec and tvec, respectively)
+			# It is specified by a rotation and a translation vector (rvec and tvec, respectively) and stored in RODRIGUES FORM (???)
 				# The 'corners' parameter is the vector of marker corners returned by the detectMarkers() function.
 				# The second parameter is the size of the marker side in meters or in any other unit. Note that the translation vectors of the estimated poses will be in the same unit
 				# cameraMatrix and distCoeffs are the camera calibration parameters that need to be known prior to executing this function.
 				# rvecs and tvecs are the rotation and translation vectors respectively.
 				# The marker coordinate axes are centered on the middle of the marker, with the Z axis perpendicular to the marker plane.
 			rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, marker_side_length, cameraMatrix, distCoeffs)
-			
+			dst, jacobian = cv2.Rodrigues(rvec)		# I think this is the rotation matrix...that...rotates from the marker to the camera?
+			rot_alpha = math.atan(dst[1][0] / dst[0][0])
+			rot_beta = math.atan(dst[2][0] / math.sqrt(dst[2][1]**2 + dst[2][2]**2))
+			rot_gamma = math.atan(dst[2][1] / dst[2][2])
+			# print('\rRotation Angles: {0}, {1}, {2}'.format(rot_alpha*180/3.141, rot_beta*180/3.141, rot_gamma*180/3.141), end='')	# Print % completion, using \r and end='' to overwrite the previously displayed text (so it doesn't spam the terminal)
+
 			# The aruco module provides a function to draw the coordinate axes onto the image, so pose estimation can be visually verified:
 			# Image is the input/output image where the axis will be drawn (it will normally be the same image where the markers were detected).
 			# cameraMatrix and distCoeffs are the camera calibration parameters.
@@ -152,7 +168,8 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 			frame_time = frame_count/fps						# Calculate the elapsed time based on which frame (from the source video) you're on and what the FPS of that video is
 			
 			# Append tvecs and rvecs to the pose_transformation list, to be saved to a csv after the loop is complete
-			pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]])
+			# pose_transformation.append([frame_time, rvec[0][0][0], rvec[0][0][1], rvec[0][0][2],  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]])
+			pose_transformation.append([frame_time, rot_alpha, rot_beta, rot_gamma,  tvec[0][0][0], tvec[0][0][1], tvec[0][0][2]])
 		
 			
 		except:
