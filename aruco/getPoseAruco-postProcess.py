@@ -124,11 +124,11 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 		parameters = aruco.DetectorParameters_create()			# Not sure what this step does but Adriana put it in and I trust her
 		parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
 		# parameters.polygonalApproxAccuracyRate = 0.05
-		parameters.cornerRefinementWinSize = 5
-		parameters.cornerRefinementMinAccuracy = 0.01
-		parameters.perspectiveRemovePixelPerCell = 8
-		parameters.maxErroneousBitsInBorderRate = 0.04
-		parameters.errorCorrectionRate = 0.2
+		# parameters.cornerRefinementWinSize = 5
+		# parameters.cornerRefinementMinAccuracy = 0.01
+		# parameters.perspectiveRemovePixelPerCell = 8
+		# parameters.maxErroneousBitsInBorderRate = 0.04
+		# parameters.errorCorrectionRate = 0.2
 		# parameters.adaptiveThreshWinSizeMin= 170
 		# parameters.adaptiveThreshWinSizeMax= 255
 		# parameters.adaptiveThreshWinSizeStep= 3
