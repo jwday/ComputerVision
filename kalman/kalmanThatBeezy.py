@@ -187,118 +187,118 @@ def estimate_pose(datafile, delim_whitespace=False):
 
 	# Organize the results
 	x_filt = pd.DataFrame(xs)						# Make a Pandas DataFrame from the Kalman-estimated states.
-	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration', 'r1', 'r1 Velocity', 'r1 Acceleration']
-	x_filt['Time (s)'] = df['Time (s)']
+	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration', 'r1 Angle', 'r1 Velocity', 'r1 Acceleration']
+	# x_filt['Time (s)'] = df['Time (s)']
 	x_filt['XY Position'] = x_filt.apply(lambda row: np.sqrt((row['X Position'] - x_filt['X Position'][0])**2 + (row['Y Position'] - x_filt['Y Position'][0])**2), axis=1)
 	x_filt['XY Velocity'] = x_filt.apply(lambda row: np.sqrt((row['X Velocity'] - x_filt['X Velocity'][0])**2 + (row['Y Velocity'] - x_filt['Y Velocity'][0])**2), axis=1)
 	x_filt['XY Acceleration'] = x_filt.apply(lambda row: np.sqrt((row['X Acceleration'] - x_filt['X Acceleration'][0])**2 + (row['Y Acceleration'] - x_filt['Y Acceleration'][0])**2), axis=1)
-	total_time = np.round(x_filt['Time (s)'].iloc[-1],1)
-	framerate = np.round(df.count()[0]/x_filt['Time (s)'].iloc[-1], 2)
+	total_time = np.round(df['Time (s)'].iloc[-1],1)
+	framerate = np.round(df.count()[0]/df['Time (s)'].iloc[-1], 2)
 	
 	
 
 	# -----------------------------------------------------------------
 	# PLOT RESULTS
 	# -----------------------------------------------------------------
-	# Plot just Rotation
-	fig1, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
-	fig1.suptitle('{} Failure Mode During {}, Angular Displacement'.format(valvegroup, movement_type), y=0.97, fontsize=12)
-	# ax[0].set_title('cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX', fontsize=10)
-	zs.plot(ax=ax[0],
-			x='Time (s)', y='r1',
-			marker='o',
-			markersize=2,
-			linestyle='None',
-			label='Measured Angle')
-	x_filt.plot(ax=ax[0], x='Time (s)', y='r1', color ='#ff7f0e', label='Estimated Angle')
-	x_filt.plot(ax=ax[1], x='Time (s)', y='r1 Velocity', color ='#ff7f0e', label='Estimated Angular Velocity')
-	x_filt.plot(ax=ax[2], x='Time (s)', y='r1 Acceleration', color ='#ff7f0e', label='Estimated Angular Acceleration')
-	ax[0].legend(loc='best')
-	ax[1].legend(loc='best')
-	ax[2].legend(loc='best')
-	ax[0].set_ylabel(r'$\Theta$ (deg)', color='#413839', fontsize=10)
-	ax[1].set_ylabel(r'$\omega$ (deg/s)', color='#413839', fontsize=10)
-	ax[2].set_ylabel(r'$\alpha$ (deg/$s^2$)', color='#413839', fontsize=10)
+	# # Plot just Rotation
+	# fig1, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
+	# fig1.suptitle('{} Failure Mode During {}, Angular Displacement'.format(valvegroup, movement_type), y=0.97, fontsize=12)
+	# # ax[0].set_title('cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX', fontsize=10)
+	# df.plot(ax=ax[0],
+	# 		x='Time (s)', y='r1',
+	# 		marker='o',
+	# 		markersize=2,
+	# 		linestyle='None',
+	# 		label='Measured Angle')
+	# x_filt.plot(ax=ax[0], x='Time (s)', y='r1 Angle', color ='#ff7f0e', label='Estimated Angle')
+	# x_filt.plot(ax=ax[1], x='Time (s)', y='r1 Velocity', color ='#ff7f0e', label='Estimated Angular Velocity')
+	# x_filt.plot(ax=ax[2], x='Time (s)', y='r1 Acceleration', color ='#ff7f0e', label='Estimated Angular Acceleration')
+	# ax[0].legend(loc='best')
+	# ax[1].legend(loc='best')
+	# ax[2].legend(loc='best')
+	# ax[0].set_ylabel(r'$\Theta$ (deg)', color='#413839', fontsize=10)
+	# ax[1].set_ylabel(r'$\omega$ (deg/s)', color='#413839', fontsize=10)
+	# ax[2].set_ylabel(r'$\alpha$ (deg/$s^2$)', color='#413839', fontsize=10)
 
 
-	# # Plot just X
-	fig2, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
-	plt.suptitle('{} Failure Mode During {}, X-axis'.format(valvegroup, movement_type), y=0.95, fontsize=12)
-	zs.plot(ax=ax[0],
-			x='Time (s)', y='t1',
-			marker='o',
-			markersize=2,
-			linestyle='None',
-			label='Measured')
-	x_filt.plot(ax=ax[0], x='Time (s)', y='X Position', color ='#ff7f0e', label='Estimated Position')
-	x_filt.plot(ax=ax[1], x='Time (s)', y='X Velocity', color ='#ff7f0e', label='Estimated Velocity')
-	x_filt.plot(ax=ax[2], x='Time (s)', y='X Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
-	ax[0].legend(loc='upper left')
-	ax[1].legend(loc='upper right')
-	ax[2].legend(loc='upper right')
-	ax[0].set_ylabel(r'$d_x$ (m)', color='#413839', fontsize=10)
-	ax[1].set_ylabel(r'$\dot{d_x}$ (m/s)', color='#413839', fontsize=10)
-	ax[2].set_ylabel(r'$\ddot{d_x}$ (m/$s^2$)', color='#413839', fontsize=10)
+	# # # Plot just X
+	# fig2, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
+	# plt.suptitle('{} Failure Mode During {}, X-axis'.format(valvegroup, movement_type), y=0.95, fontsize=12)
+	# df.plot(ax=ax[0],
+	# 		x='Time (s)', y='t1',
+	# 		marker='o',
+	# 		markersize=2,
+	# 		linestyle='None',
+	# 		label='Measured')
+	# x_filt.plot(ax=ax[0], x='Time (s)', y='X Position', color ='#ff7f0e', label='Estimated Position')
+	# x_filt.plot(ax=ax[1], x='Time (s)', y='X Velocity', color ='#ff7f0e', label='Estimated Velocity')
+	# x_filt.plot(ax=ax[2], x='Time (s)', y='X Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
+	# ax[0].legend(loc='upper left')
+	# ax[1].legend(loc='upper right')
+	# ax[2].legend(loc='upper right')
+	# ax[0].set_ylabel(r'$d_x$ (m)', color='#413839', fontsize=10)
+	# ax[1].set_ylabel(r'$\dot{d_x}$ (m/s)', color='#413839', fontsize=10)
+	# ax[2].set_ylabel(r'$\ddot{d_x}$ (m/$s^2$)', color='#413839', fontsize=10)
 
 
-	# # Plot just Y
-	fig3, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
-	plt.suptitle('{} Failure Mode During {}, Y-axis'.format(valvegroup, movement_type), y=0.95, fontsize=12)
-	zs.plot(ax=ax[0],
-			x='Time (s)', y='tt',
-			marker='o',
-			markersize=2,
-			linestyle='None',
-			label='r1 Measured')
-	x_filt.plot(ax=ax[0], x='Time (s)', y='XY Position', color ='#ff7f0e', label='Estimated Position')
-	x_filt.plot(ax=ax[1], x='Time (s)', y='XY Velocity', color ='#ff7f0e', label='Estimated Velocity')
-	x_filt.plot(ax=ax[2], x='Time (s)', y='Y Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
-	ax[0].legend(loc='upper left')
-	ax[1].legend(loc='upper right')
-	ax[2].legend(loc='upper right')
-	ax[0].set_ylabel(r'$d_y$ (m)', color='#413839', fontsize=10)
-	ax[1].set_ylabel(r'$\dot{d_y}$ (m/s)', color='#413839', fontsize=10)
-	ax[2].set_ylabel(r'$\ddot{d_y}$ (m/$s^2$)', color='#413839', fontsize=10)
+	# # # Plot just Y
+	# fig3, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
+	# plt.suptitle('{} Failure Mode During {}, Y-axis'.format(valvegroup, movement_type), y=0.95, fontsize=12)
+	# df.plot(ax=ax[0],
+	# 		x='Time (s)', y='tt',
+	# 		marker='o',
+	# 		markersize=2,
+	# 		linestyle='None',
+	# 		label='r1 Measured')
+	# x_filt.plot(ax=ax[0], x='Time (s)', y='XY Position', color ='#ff7f0e', label='Estimated Position')
+	# x_filt.plot(ax=ax[1], x='Time (s)', y='XY Velocity', color ='#ff7f0e', label='Estimated Velocity')
+	# x_filt.plot(ax=ax[2], x='Time (s)', y='Y Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
+	# ax[0].legend(loc='upper left')
+	# ax[1].legend(loc='upper right')
+	# ax[2].legend(loc='upper right')
+	# ax[0].set_ylabel(r'$d_y$ (m)', color='#413839', fontsize=10)
+	# ax[1].set_ylabel(r'$\dot{d_y}$ (m/s)', color='#413839', fontsize=10)
+	# ax[2].set_ylabel(r'$\ddot{d_y}$ (m/$s^2$)', color='#413839', fontsize=10)
 
 
-	# Plot XY
-	fig4, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
-	plt.suptitle('{} Failure Mode During {}, Total Displacement'.format(valvegroup, movement_type), y=0.95, fontsize=12)
-	df.plot(ax=ax[0],
-			x='Time (s)', y='tt',
-			marker='o',
-			markersize=2,
-			linestyle='None',
-			label='Measured')
-	x_filt.plot(ax=ax[0], x='Time (s)', y='XY Position', color ='#ff7f0e', label='Estimated Position')
-	x_filt.plot(ax=ax[1], x='Time (s)', y='XY Velocity', color ='#ff7f0e', label='Estimated Velocity')
-	x_filt.plot(ax=ax[2], x='Time (s)', y='XY Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
-	ax[0].legend(loc='upper left')
-	ax[1].legend(loc='upper right')
-	ax[2].legend(loc='upper right')
-	ax[0].set_ylabel(r'$d$ (m)', color='#413839', fontsize=10)
-	ax[1].set_ylabel(r'$\dot{d}$ (m/s)', color='#413839', fontsize=10)
-	ax[2].set_ylabel(r'$\ddot{d}$ (m/$s^2$)', color='#413839', fontsize=10)
+	# # Plot XY
+	# fig4, ax = plt.subplots(3, sharex=True, dpi=150, figsize=[7, 5])
+	# plt.suptitle('{} Failure Mode During {}, Total Displacement'.format(valvegroup, movement_type), y=0.95, fontsize=12)
+	# df.plot(ax=ax[0],
+	# 		x='Time (s)', y='tt',
+	# 		marker='o',
+	# 		markersize=2,
+	# 		linestyle='None',
+	# 		label='Measured')
+	# x_filt.plot(ax=ax[0], x='Time (s)', y='XY Position', color ='#ff7f0e', label='Estimated Position')
+	# x_filt.plot(ax=ax[1], x='Time (s)', y='XY Velocity', color ='#ff7f0e', label='Estimated Velocity')
+	# x_filt.plot(ax=ax[2], x='Time (s)', y='XY Acceleration', color ='#ff7f0e', label='Estimated Acceleration')
+	# ax[0].legend(loc='upper left')
+	# ax[1].legend(loc='upper right')
+	# ax[2].legend(loc='upper right')
+	# ax[0].set_ylabel(r'$d$ (m)', color='#413839', fontsize=10)
+	# ax[1].set_ylabel(r'$\dot{d}$ (m/s)', color='#413839', fontsize=10)
+	# ax[2].set_ylabel(r'$\ddot{d}$ (m/$s^2$)', color='#413839', fontsize=10)
 
 
-	# Plot X vs Y
-	fig5, ax = plt.subplots(dpi=150, figsize=[9, 5])
-	plt.suptitle('{} Failure Mode During {}, Position Tracking'.format(valvegroup, movement_type), y=0.98, fontsize=12)
-	plt.title('Total Time: {} sec, Framerate: {} fps'.format(total_time, framerate), fontsize=12)
-	# plt.title('Measured Position with Kalman Estimate\nTotal Time: {} sec'.format(np.round(x_filt['Time (s)'].iloc[-1],1)))
-	df.plot(ax=ax,
-			x='t1', y='t2',
-			marker='o',
-			markersize=2,
-			linestyle='None',
-			label='Measured')
-	x_filt.plot(ax=ax, x='X Position', y='Y Position', label='Kalman Estimate')
-	ax.legend(loc='best')
-	plt.axis('equal')
-	plt.xlabel('X (m)')
-	plt.ylabel('Y (m)')
-	plt.xlim(left=-0.762, right=0.762)
-	plt.ylim(top=0.457, bottom=-0.457)
+	# # Plot X vs Y
+	# fig5, ax = plt.subplots(dpi=150, figsize=[9, 5])
+	# plt.suptitle('{} Failure Mode During {}, Position Tracking'.format(valvegroup, movement_type), y=0.98, fontsize=12)
+	# plt.title('Total Time: {} sec, Framerate: {} fps'.format(total_time, framerate), fontsize=12)
+	# # plt.title('Measured Position with Kalman Estimate\nTotal Time: {} sec'.format(np.round(x_filt['Time (s)'].iloc[-1],1)))
+	# df.plot(ax=ax,
+	# 		x='t1', y='t2',
+	# 		marker='o',
+	# 		markersize=2,
+	# 		linestyle='None',
+	# 		label='Measured')
+	# x_filt.plot(ax=ax, x='X Position', y='Y Position', label='Kalman Estimate')
+	# ax.legend(loc='best')
+	# plt.axis('equal')
+	# plt.xlabel('X (m)')
+	# plt.ylabel('Y (m)')
+	# plt.xlim(left=-0.762, right=0.762)
+	# plt.ylim(top=0.457, bottom=-0.457)
 
 	
 	# Plot the things
@@ -306,7 +306,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 
 
 	# Return data (if applicable)
-	return zs, x_filt
+	return df, x_filt
 
 	# covariance = pd.DataFrame(cov)
 	# covariance['Time (s)'] = df['Time (s)']

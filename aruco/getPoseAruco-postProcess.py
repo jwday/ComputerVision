@@ -74,6 +74,7 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 
 	# Here we set everything up by pulling the video directory so we can save a new file to it later. Also we pull the calibration matrices for the camera used to capture the source video. If you use a new camera, you'll have to get a new calibration matrix.
 	video_loc_dir = '/'.join(video_loc.split('/')[:-1])+'/'  	# Grab the directory of the source video. (ex. if 'video_loc' is '/mnt/c/Users/Josh/Desktop/Photos/output.mp4', this will return '/mnt/c/Users/Josh/Desktop/Photos/')
+	video_name = video_loc.split('/')[-1].split('.')[0]
 
 	# Import calibration items (camera matrix and distortion coefficients)
 	print('Importing calibration file...')	
@@ -96,7 +97,7 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 
 	# Here we define the codec and create a VideoWriter object to resave the video (with a coordinate frame drawn on the Aruco marker and reduced in size).
 	fourcc = cv2.VideoWriter_fourcc(*"mp4v")						# Specify the codec used to write the new video
-	out_loc = video_loc_dir + 'aruco_output.mp4'					# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
+	out_loc = video_loc_dir + video_name + '_aruco.mp4'				# Save the video in the same directory as the source video, call it 'aruco_output.mp4'
 	out_res = (width, height)										# Output video resolution (NOTE: This is NOT the video that the Aruco marker will be tracked from. The marker will still be tracked from the source video--this is the output that the coordinate axes are drawn on.)
 	out = cv2.VideoWriter(out_loc, fourcc , fps, out_res)			# Instantiate an object of the output video (to have a coordinate frame drawn on the Aruco marker and resized)
 
@@ -110,18 +111,18 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 
 	while(True):
 		# Capture frame-by-frame
-		ret, frame = cap.read()									# Read the next frame in the buffer and return it as an object
-		frame_count += 1										# Increment the frame counter
-		percent_complete = int(100*(frame_count/no_frames))		# Calculate % completion
+		ret, frame = cap.read()										# Read the next frame in the buffer and return it as an object
+		frame_count += 1											# Increment the frame counter
+		percent_complete = int(100*(frame_count/no_frames))			# Calculate % completion
 		print('\rFrame: {0}/{1} ({2}%)'.format(frame_count, no_frames, percent_complete), end='')	# Print % completion, using \r and end='' to overwrite the previously displayed text (so it doesn't spam the terminal)
 
-		if (not ret):											# If cap.read() doesn't return anything (i.e. if you've reached the end of the source video)
-			break												# Kill the loop
+		if (not ret):												# If cap.read() doesn't return anything (i.e. if you've reached the end of the source video)
+			break													# Kill the loop
 
-		blur = cv2.GaussianBlur(frame, (7,7), 0)				# As part of the Aruco marker detection algorithm, we blur the frame
-		gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)			# Next, we make the frame grayscale
-		aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250) 	# Define the shape of the Aruco marker we are trying to detect (6X6_250 is very common)
-		parameters = aruco.DetectorParameters_create()			# Not sure what this step does but Adriana put it in and I trust her
+		blur = cv2.GaussianBlur(frame, (11,11), 0)					# As part of the Aruco marker detection algorithm, we blur the frame
+		gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)				# Next, we make the frame grayscale
+		aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250) 		# Define the shape of the Aruco marker we are trying to detect (6X6_50 is very common)
+		parameters = aruco.DetectorParameters_create()				# Not sure what this step does but Adriana put it in and I trust her
 		parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
 		# parameters.polygonalApproxAccuracyRate = 0.05
 		# parameters.cornerRefinementWinSize = 5
@@ -129,9 +130,9 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 		# parameters.perspectiveRemovePixelPerCell = 8
 		# parameters.maxErroneousBitsInBorderRate = 0.04
 		# parameters.errorCorrectionRate = 0.2
-		# parameters.adaptiveThreshWinSizeMin= 170
-		# parameters.adaptiveThreshWinSizeMax= 255
-		# parameters.adaptiveThreshWinSizeStep= 3
+		# parameters.adaptiveThreshWinSizeMin= 50
+		# parameters.adaptiveThreshWinSizeMax= 200
+		# parameters.adaptiveThreshWinSizeStep= 10
 		
 		try:
 			# Here is the function that does all the hard work of actually detecting markers
@@ -195,7 +196,7 @@ def get_pose(calib_loc=calib_loc, video_loc=video_loc):
 	# When everything done, release the capture
 	headers = ['Time (s)', 'r1', 'r2', 'r3', 't1', 't2', 't3']
 	df = pd.DataFrame(pose_transformation, columns=headers)
-	df.to_csv('/'.join(video_loc.split("/")[:-1]) + '/datafile_{0}p_{1}fps.csv'.format(source_height, fps), index=False)
+	df.to_csv('/'.join(video_loc.split('/')[:-1]) + '/' + video_name + '.csv', index=False)
 	# file.close()
 	cap.release()
 	out.release()
