@@ -117,14 +117,21 @@ def batch_kalman(directory):
 	axs[2, 1].set_ylabel(r'$\alpha$ (deg/$s^2$)', fontsize=8)
 	fig5.align_ylabels()
 
+	axs[0, 0].set_ylim(bottom=-0.015, top=0.415)		# tt
+	axs[1, 0].set_ylim(bottom=-0.01, top=0.0725)		# ttdot
+	axs[2, 0].set_ylim(bottom=-0.0425, top=0.0425)		# ttdotdot
+	axs[0, 1].set_ylim(bottom=-360, top=360)			# r
+	axs[1, 1].set_ylim(bottom=-62, top=62)				# rdot
+	axs[2, 1].set_ylim(bottom=-30, top=30)				# rdotdot
+
+	plt.xlim(left=0, right=10)
+
 	class ScalarFormatterForceFormat(mpl.ticker.ScalarFormatter):
 		def _set_format(self):  # Override function that finds format to use.
 			self.format = "%1.1f"  # Give format here
 
-	plt.xlim(left=0, right=14)
-
 	for ax in axs.flat:
-			ax.legend(loc='upper right', fontsize=8, framealpha=0.9)
+			ax.legend(loc='upper right', fontsize=6, framealpha=0.9)
 			
 			yfmt = ScalarFormatterForceFormat()
 			yfmt.set_powerlimits((0,0))
@@ -137,7 +144,7 @@ def batch_kalman(directory):
 			ax.xaxis.label.set_size(8)
 			ax.set(xlabel=r'Time $(sec)$')
 
-	plt.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.1, wspace=0.3, hspace=0.2)
+	plt.subplots_adjust(left=0.09, right=0.98, top=0.88, bottom=0.1, wspace=0.3, hspace=0.2)
 	plt.savefig(directory + 'all.png')
 	plt.show()
 

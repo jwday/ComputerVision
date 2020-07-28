@@ -39,11 +39,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 	df['t2'] = [x - df['t2'][0] for x in df['t2']]						# Offset by initial value (zero the data)
 	df['t2'] = -df['t2']												# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
 	
-	df['tt'] = (df['t1'] ** 2 + df['t2'] ** 2)**0.5
-
-	 									# Total position (sqrt(x^2 + y^2))
-						
-										#	Note that this can only occur after zeroing data
+	df['tt'] = (df['t1'] ** 2 + df['t2'] ** 2)**0.5						# Total displacement (sqrt(x^2 + y^2)).
 
 
 	# ================================================================
@@ -52,7 +48,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 	df['r1'] = -np.rad2deg(df['r1'])									# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side. Also convert to degrees.
 	df['r1'] = [x - df['r1'][0] for x in df['r1']]						# Offset by initial value
 
-	add_amount = 0														# This block will handle incidents when the angle jumps from -180 to +180
+	add_amount = 0														# This block will handle incidences when the angle jumps from -180 to +180 or vice-versa. The threshold is 175 deg.
 	temp_list = list(df['r1'])											#
 	for i, x in enumerate(df['r1'][1:]):								#
 		diff = x - df['r1'][i]											#
@@ -70,7 +66,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# ================================================================
 	# BEGIN DOING THE KALMAN FILTER THING
 	# ================================================================
-	zs = df[['t1', 't2', 'r1']].values									# Create a Numpy array of the measurements for use in the Kalman filter
+	zs = df[['t1', 't2', 'tt', 'r1']].values									# Create a Numpy array of the measurements for use in the Kalman filter
 
 
 	# -----------------------------------------------------------------
@@ -78,15 +74,18 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# -----------------------------------------------------------------
 	# P = np.array([[9.0E-6, 0, 0], [0, 9.0E-6, 0], [0, 0, 9.0E-6]])	# Initial state covariance (expected variance of each state variable). Should be of size NxN for N tracked states.
 	# P = np.eye(6)*9.0E-6
-	P = np.array([[9.0E-4,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0],  # x
-				  [		0,	9.0E-2,		 0,		 0,		 0,		 0,		 0,		 0,		 0],  # xdot
-				  [		0,		 0,	9.0E-0,		 0,		 0,		 0,		 0,		 0,		 0],  # xdotdot
-				  [		0,		 0,		 0,	9.0E-4,		 0,		 0,		 0,		 0,		 0],  # y
-				  [		0,		 0,		 0,		 0,	9.0E-2,		 0,		 0,		 0,		 0],  # ydot
-				  [		0,		 0,		 0,		 0,		 0,	9.0E-0,		 0,		 0,		 0],  # ydotdot
-				  [		0,		 0,		 0,		 0,		 0,		 0,	9.0E-4,		 0,		 0],  # r1
-				  [		0,		 0,		 0,		 0,		 0,		 0,		 0, 9.0E-2,		 0],  # r1dot
-				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,	9.0E-0]]) # r1dotdot
+	P = np.array([[9.0E-4,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0, 	 0],  # x
+				  [		0,	9.0E-2,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0, 	 0],  # xdot
+				  [		0,		 0,	9.0E-0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0, 	 0],  # xdotdot
+				  [		0,		 0,		 0,	9.0E-4,		 0,		 0,		 0,		 0,		 0,		 0,		 0, 	 0],  # y
+				  [		0,		 0,		 0,		 0,	9.0E-2,		 0,		 0,		 0,		 0,		 0,		 0, 	 0],  # ydot
+				  [		0,		 0,		 0,		 0,		 0,	9.0E-0,		 0,		 0,		 0,		 0,		 0, 	 0],  # ydotdot
+				  [		0,		 0,		 0,		 0, 	 0,		 0,	9.0E-4, 	 0,		 0,		 0,		 0,		 0],  # tt
+				  [		0,		 0,		 0,		 0,		 0, 	 0, 	 0,	9.0E-2, 	 0,		 0,		 0,		 0],  # ttdot
+				  [		0,		 0,		 0,		 0,		 0,		 0, 	 0, 	 0, 9.0E-0,		 0,		 0,		 0],  # ttdotdot
+				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,	9.0E-4,		 0,		 0],  # r1
+				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0, 9.0E-2,		 0],  # r1dot
+				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,	9.0E-0]]) # r1dotdot
 
 
 	# -----------------------------------------------------------------
@@ -107,23 +106,26 @@ def estimate_pose(datafile, delim_whitespace=False):
 	from filterpy.common import Q_discrete_white_noise
 	Q_t1 = Q_discrete_white_noise(dim=3, dt=df['dt'].mean(), var=2.35, block_size=1)	# White noise for X pos
 	Q_t2 = Q_t1																			# White noise for Y pos
+	Q_tt = Q_t1																			# White noise for TT pos
 	Q_r1 = Q_discrete_white_noise(dim=3, dt=df['dt'].mean(), var=0.1, block_size=1)		# Different white noise for Theta
-	Q = linalg.block_diag(Q_t1, Q_t2, Q_r1)
+	Q = linalg.block_diag(Q_t1, Q_t2, Q_tt, Q_r1)
 
 	# -----------------------------------------------------------------
 	# MEASUREMENT COVARIANCE MATRIX (R)
 	# -----------------------------------------------------------------
-	R = np.array([[1.0E0, 		 0,			0],				# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
-				  [	 0,		1.0E0,		 	0],
-				  [	 0,   		 0, 	  	1]])
+	R = np.array([[1.0E0, 		 0,			0, 			0],				# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
+				  [	   0,	 1.0E0,		 	0, 			0],
+				  [	   0,		 0,		1.0E0,		 	0],
+				  [	   0,   	 0, 	  	0, 			1]])
 
 
 	# -----------------------------------------------------------------
 	# STATE-SPACE TO MEASUREMENT-SPACE CONVERSION MATRIX (H)
 	# -----------------------------------------------------------------
-	H = np.array([[1., 	0, 	0, 	0, 	0, 	0,	0,	0,	0],					# Measurement-space conversion. Should be size MxN for M measured states and N tracked states.
-				  [ 0, 	0, 	0, 	1, 	0, 	0,	0,	0,	0],					# Measured states are associated with a 1 (or whatever conversion factor is necessary to translate the state into an associated measurement). Everything else is 0.
-				  [ 0, 	0, 	0, 	0, 	0, 	0,	1,	0,	0]])				# In this case, we're measuring position but not velocity or acceleration, so [1, 0, 0] such that Hx yields only position predictions in the residual.
+	H = np.array([[1., 	0, 	0, 	0, 	0, 	0,	0,  0, 	0,	0,	0,	0],					# Measurement-space conversion. Should be size MxN for M measured states and N tracked states.
+				  [ 0, 	0, 	0, 	1, 	0, 	0,	0,  0, 	0,	0,	0,	0],					# Measured states are associated with a 1 (or whatever conversion factor is necessary to translate the state into an associated measurement). Everything else is 0.
+				  [ 0, 	0, 	0, 	0, 	0, 	0,	1,  0, 	0,	0,	0,	0],					# Measured states are associated with a 1 (or whatever conversion factor is necessary to translate the state into an associated measurement). Everything else is 0.
+				  [ 0, 	0, 	0, 	0, 	0, 	0,	0,  0, 	0,	1,	0,	0]])				# In this case, we're measuring position but not velocity or acceleration, so [1, 0, 0] such that Hx yields only position predictions in the residual.
 
 
 	# -----------------------------------------------------------------
@@ -131,15 +133,18 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# -----------------------------------------------------------------
 	def state_transition_matrix(k=None):								# State transition matrix of the system, to be updated every time the function is called because dt is not constant. Should be of size NxN for N tracked states.
 		dt = df['dt'][k]
-		F = np.array([[1, 	dt,	0.5*dt**2, 		0, 		0,		   0,		0,		0,			0],	 # x
-					  [0, 	 1, 	   dt, 		0, 		0,		   0,		0,		0,			0],	 # xdot
-					  [0, 	 0, 		1, 		0, 		0,		   0,		0,		0,			0],  # xdotdot
-					  [0, 	 0, 		0, 		1, 	   dt, 0.5*dt**2,		0,		0,			0],  # y
-					  [0, 	 0, 		0, 		0, 		1, 		  dt,		0,		0,			0],  # ydot
-					  [0, 	 0, 		0, 		0, 		0, 		   1,		0,		0,			0],	 # ydotdot
-					  [0, 	 0, 		0, 		0, 		0, 		   0,		1,		dt,	0.5*dt**2],	 # r1
-					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		1,		   dt],	 # r1dot
-					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		0,			1]]) # r1dotdot
+		F = np.array([[1, 	dt,	0.5*dt**2, 		0, 		0,		   0,		0,		0, 		   0,		0,		0,			0],	 # x
+					  [0, 	 1, 	   dt, 		0, 		0,		   0,		0,		0, 		   0,		0,		0,			0],	 # xdot
+					  [0, 	 0, 		1, 		0, 		0,		   0,		0,		0, 		   0,		0,		0,			0],  # xdotdot
+					  [0, 	 0, 		0, 		1, 	   dt, 0.5*dt**2,		0,		0, 		   0,		0,		0,			0],  # y
+					  [0, 	 0, 		0, 		0, 		1, 		  dt,		0,		0, 		   0,		0,		0,			0],  # ydot
+					  [0, 	 0, 		0, 		0, 		0, 		   1,		0,		0, 		   0,		0,		0,			0],	 # ydotdot
+					  [0, 	 0, 		0, 		0,		0, 		   0,		1, 	   dt, 0.5*dt**2,		0,		0,			0],  # tt
+					  [0, 	 0, 		0,		0,		0, 		   0, 		0, 		1, 		  dt,		0,		0,			0],  # ttdot
+					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		0, 		   1,		0,		0,			0],	 # ttdotdot
+					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		0, 		   0,		1,		dt,	0.5*dt**2],	 # r1
+					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		0, 		   0,		0,		1,		   dt],	 # r1dot
+					  [0, 	 0, 		0, 		0, 		0, 		   0,		0,		0, 		   0,		0,		0,			1]]) # r1dotdot
 		return F
 
 
@@ -164,14 +169,14 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# 			  		 0,  # r1dot
 	# 			  		 0]) # r1dotdot
 	# I offset all init values to zero and the motion begins at zero so make it zero
-	x = np.zeros(9)
+	x = np.zeros(12)
 
 
 	# -----------------------------------------------------------------
 	# KALMAN FILTER
 	# -----------------------------------------------------------------
 	# Set up the Kalman Filter object
-	kf = KalmanFilter(dim_x=9, dim_z=3, dim_u=0) 	# Initialize a KalmanFilter object.
+	kf = KalmanFilter(dim_x=12, dim_z=4, dim_u=0) 	# Initialize a KalmanFilter object.
 	kf.x = x 										# Specify initial state.
 	kf.F = state_transition_matrix(k=0) 			# Specify initial state transition matrix.
 	kf.H = H					   					# Measurement function, to define what states are being measured.
@@ -190,14 +195,14 @@ def estimate_pose(datafile, delim_whitespace=False):
 
 	# Organize the results
 	x_filt = pd.DataFrame(xs)						# Make a Pandas DataFrame from the Kalman-estimated states.
-	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration', 'r1 Angle', 'r1 Velocity', 'r1 Acceleration']
+	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration', 'XY Position', 'XY Velocity', 'XY Acceleration', 'r1 Angle', 'r1 Velocity', 'r1 Acceleration']
 	# x_filt['Time (s)'] = df['Time (s)']
 	# x_filt['XY Position'] = x_filt.apply(lambda row: np.sqrt((row['X Position'] - x_filt['X Position'][0])**2 + (row['Y Position'] - x_filt['Y Position'][0])**2), axis=1)
 	# x_filt['XY Velocity'] = x_filt.apply(lambda row: np.sqrt((row['X Velocity'] - x_filt['X Velocity'][0])**2 + (row['Y Velocity'] - x_filt['Y Velocity'][0])**2), axis=1)
 	# x_filt['XY Acceleration'] = x_filt.apply(lambda row: np.sqrt((row['X Acceleration'] - x_filt['X Acceleration'][0])**2 + (row['Y Acceleration'] - x_filt['Y Acceleration'][0])**2), axis=1)
-	x_filt['XY Position'] = (x_filt['X Position']**2 + x_filt['Y Position']**2)**0.5
-	x_filt['XY Velocity'] = (x_filt['X Velocity']**2 + x_filt['Y Velocity']**2)**0.5
-	x_filt['XY Acceleration'] = (x_filt['X Acceleration']**2 + x_filt['Y Acceleration']**2)**0.5
+	# x_filt['XY Position'] = (x_filt['X Position']**2 + x_filt['Y Position']**2)**0.5
+	# x_filt['XY Velocity'] = (x_filt['X Velocity']**2 + x_filt['Y Velocity']**2)**0.5
+	# x_filt['XY Acceleration'] = (x_filt['X Acceleration']**2 + x_filt['Y Acceleration']**2)**0.5
 
 	total_time = np.round(df['Time (s)'].iloc[-1],1)
 	framerate = np.round(df.count()[0]/df['Time (s)'].iloc[-1], 2)
