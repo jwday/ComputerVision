@@ -37,18 +37,19 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# ================================================================
 	df['t1'] = [x - df['t1'][0] for x in df['t1']]						# Offset by initial value (zero the data)
 	df['t2'] = [x - df['t2'][0] for x in df['t2']]						# Offset by initial value (zero the data)
-	df['t2'] = [-x for x in df['t2']]									# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
+	df['t2'] = -df['t2']												# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
 	
-	df['tt'] = df.apply(lambda row: 									# Total position (sqrt(x^2 + y^2))
-						np.sqrt((row['t1']-df['t1'][0])**2				#	Note that this can only occur after zeroing data
-						 + (row['t2']-df['t2'][0])**2), axis=1)
+	df['tt'] = (df['t1'] ** 2 + df['t2'] ** 2)**0.5
+
+	 									# Total position (sqrt(x^2 + y^2))
+						
+										#	Note that this can only occur after zeroing data
 
 
 	# ================================================================
 	# HANDLE ROTATION DATA
 	# ================================================================
-	df['r1'] = [-x for x in df['r1']]									# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side.
-	df['r1'] = [x*(180/3.14159) for x in df['r1']]						# Convert to degrees
+	df['r1'] = -np.rad2deg(df['r1'])									# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side. Also convert to degrees.
 	df['r1'] = [x - df['r1'][0] for x in df['r1']]						# Offset by initial value
 
 	add_amount = 0														# This block will handle incidents when the angle jumps from -180 to +180
@@ -83,9 +84,9 @@ def estimate_pose(datafile, delim_whitespace=False):
 				  [		0,		 0,		 0,	9.0E-4,		 0,		 0,		 0,		 0,		 0],  # y
 				  [		0,		 0,		 0,		 0,	9.0E-2,		 0,		 0,		 0,		 0],  # ydot
 				  [		0,		 0,		 0,		 0,		 0,	9.0E-0,		 0,		 0,		 0],  # ydotdot
-				  [		0,		 0,		 0,		 0,		 0,		 0,		 1,		 0,		 0],  # r1
-				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,	   100,		 0],  # r1dot
-				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,	 10000]]) # r1dotdot
+				  [		0,		 0,		 0,		 0,		 0,		 0,	9.0E-4,		 0,		 0],  # r1
+				  [		0,		 0,		 0,		 0,		 0,		 0,		 0, 9.0E-2,		 0],  # r1dot
+				  [		0,		 0,		 0,		 0,		 0,		 0,		 0,		 0,	9.0E-0]]) # r1dotdot
 
 
 	# -----------------------------------------------------------------
@@ -114,7 +115,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# -----------------------------------------------------------------
 	R = np.array([[1.0E0, 		 0,			0],				# Measurement variance/covariance. Should be size MxM for M measured states. Each value is the variance/covariance of the state measurement.
 				  [	 0,		1.0E0,		 	0],
-				  [	 0,   		 0, 	  0.1]])
+				  [	 0,   		 0, 	  	1]])
 
 
 	# -----------------------------------------------------------------
@@ -153,15 +154,17 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# INITIAL STATE MATRIX (x)
 	# -----------------------------------------------------------------
 	# Initial state. If I don't know what the initial state is, just set it to the first measurement.
-	x = np.array([df['t1'][0],  # x
-				  (-3*df['t1'][0] + 4*df['t1'][1] - df['t1'][2])/(df['dt'][0] + df['dt'][1]),  # xdot (first derivative, second-order accurate)
-				  (-2*df['t1'][0] - 3*df['t1'][1] + 6*df['t1'][2] - df['t1'][3])/(6*df['dt'][0]),  # xdotdot (second derivative, third-order accurate)
-				  df['t2'][0],  # y
-				  (-3*df['t2'][0] + 4*df['t2'][1] - df['t2'][2])/(df['dt'][0] + df['dt'][1]),  # ydot (first derivative, second-order accurate)
-				  (-2*df['t2'][0] - 3*df['t2'][1] + 6*df['t2'][2] - df['t2'][3])/(6*df['dt'][0]),  # ydotdot (second derivative, third-order accurate)
-				  df['r1'][0],  # r1
-				  		 0,  # r1dot
-				  		 0]) # r1dotdot
+	# x = np.array([df['t1'][0],  # x
+	# 			  (-3*df['t1'][0] + 4*df['t1'][1] - df['t1'][2])/(df['dt'][0] + df['dt'][1]),  # xdot (first derivative, second-order accurate)
+	# 			  (-2*df['t1'][0] - 3*df['t1'][1] + 6*df['t1'][2] - df['t1'][3])/(6*df['dt'][0]),  # xdotdot (second derivative, third-order accurate)
+	# 			  df['t2'][0],  # y
+	# 			  (-3*df['t2'][0] + 4*df['t2'][1] - df['t2'][2])/(df['dt'][0] + df['dt'][1]),  # ydot (first derivative, second-order accurate)
+	# 			  (-2*df['t2'][0] - 3*df['t2'][1] + 6*df['t2'][2] - df['t2'][3])/(6*df['dt'][0]),  # ydotdot (second derivative, third-order accurate)
+	# 			  df['r1'][0],  # r1
+	# 			  		 0,  # r1dot
+	# 			  		 0]) # r1dotdot
+	# I offset all init values to zero and the motion begins at zero so make it zero
+	x = np.zeros(9)
 
 
 	# -----------------------------------------------------------------
@@ -189,9 +192,13 @@ def estimate_pose(datafile, delim_whitespace=False):
 	x_filt = pd.DataFrame(xs)						# Make a Pandas DataFrame from the Kalman-estimated states.
 	x_filt.columns = ['X Position', 'X Velocity', 'X Acceleration', 'Y Position', 'Y Velocity', 'Y Acceleration', 'r1 Angle', 'r1 Velocity', 'r1 Acceleration']
 	# x_filt['Time (s)'] = df['Time (s)']
-	x_filt['XY Position'] = x_filt.apply(lambda row: np.sqrt((row['X Position'] - x_filt['X Position'][0])**2 + (row['Y Position'] - x_filt['Y Position'][0])**2), axis=1)
-	x_filt['XY Velocity'] = x_filt.apply(lambda row: np.sqrt((row['X Velocity'] - x_filt['X Velocity'][0])**2 + (row['Y Velocity'] - x_filt['Y Velocity'][0])**2), axis=1)
-	x_filt['XY Acceleration'] = x_filt.apply(lambda row: np.sqrt((row['X Acceleration'] - x_filt['X Acceleration'][0])**2 + (row['Y Acceleration'] - x_filt['Y Acceleration'][0])**2), axis=1)
+	# x_filt['XY Position'] = x_filt.apply(lambda row: np.sqrt((row['X Position'] - x_filt['X Position'][0])**2 + (row['Y Position'] - x_filt['Y Position'][0])**2), axis=1)
+	# x_filt['XY Velocity'] = x_filt.apply(lambda row: np.sqrt((row['X Velocity'] - x_filt['X Velocity'][0])**2 + (row['Y Velocity'] - x_filt['Y Velocity'][0])**2), axis=1)
+	# x_filt['XY Acceleration'] = x_filt.apply(lambda row: np.sqrt((row['X Acceleration'] - x_filt['X Acceleration'][0])**2 + (row['Y Acceleration'] - x_filt['Y Acceleration'][0])**2), axis=1)
+	x_filt['XY Position'] = (x_filt['X Position']**2 + x_filt['Y Position']**2)**0.5
+	x_filt['XY Velocity'] = (x_filt['X Velocity']**2 + x_filt['Y Velocity']**2)**0.5
+	x_filt['XY Acceleration'] = (x_filt['X Acceleration']**2 + x_filt['Y Acceleration']**2)**0.5
+
 	total_time = np.round(df['Time (s)'].iloc[-1],1)
 	framerate = np.round(df.count()[0]/df['Time (s)'].iloc[-1], 2)
 	
