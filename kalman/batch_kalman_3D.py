@@ -98,6 +98,7 @@ def batch_kalman(directory):
 
 	fig5, axs = plt.subplots(3, 2, sharex=True, dpi=300, figsize=[6, 4.5])
 	fig5.suptitle(plot_title, y=0.98, fontsize=12)
+	fig5.suptitle('Two Consecutive Plenum Discharges (No Failure Modes)', y=0.98, fontsize=12)
 
 	axs[0, 0].set_title('Total Translational Motion', fontsize=9, color='dimgrey', y=1.04)
 	axs[0, 1].set_title('Rotational Motion', fontsize=9, color='dimgrey', y=1.04)
