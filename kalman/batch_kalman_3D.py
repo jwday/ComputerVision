@@ -12,7 +12,6 @@ from pathlib import Path
 import seaborn as sns
 
 sns.axes_style("white")
-# sns.set_style("white", {"xtick.major.size": 0, "ytick.major.size": 0, 'axes.grid': True, 'grid.color': '.8', 'grid.linestyle': '--',})
 sns.set_style("whitegrid", {"xtick.major.size": 0, "ytick.major.size": 0, 'grid.linestyle': '--'})
 sns.set_context("paper", font_scale = 1, rc={"grid.linewidth": .5})
 
@@ -98,7 +97,7 @@ def batch_kalman(directory):
 
 	fig5, axs = plt.subplots(3, 2, sharex=True, dpi=300, figsize=[6, 4.5])
 	fig5.suptitle(plot_title, y=0.98, fontsize=12)
-	fig5.suptitle('Two Consecutive Plenum Discharges (No Failure Modes)', y=0.98, fontsize=12)
+	# fig5.suptitle('Two Consecutive Plenum Discharges (No Failure Modes)', y=0.98, fontsize=12)
 
 	axs[0, 0].set_title('Total Translational Motion', fontsize=9, color='dimgrey', y=1.04)
 	axs[0, 1].set_title('Rotational Motion', fontsize=9, color='dimgrey', y=1.04)
