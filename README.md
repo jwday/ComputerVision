@@ -1,6 +1,6 @@
 Credit where credit is due:
 ----------------------------
-Most of this code was taken from njanirudh's Aruco Tracker repo: https://github.com/njanirudh/Aruco_Tracker
+The computer vision portion of this code was inspired by and expanded upon from njanirudh's Aruco Tracker repo: https://github.com/njanirudh/Aruco_Tracker
 
 
 Dependencies:
