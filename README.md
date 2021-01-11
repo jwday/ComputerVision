@@ -79,4 +79,4 @@ The timeseries dataset of position and orientation is fed into the Python-based 
 
 ![Sample results](/A1+A2_Rotation.png)
 
-For this particular example, an attempted rotation with valves A1 and A2 failed open results in a large coupled translation + rotation.
+For this particular example, an attempted rotation with valves A1 and A2 failed open results in a large coupled translation + rotation. Without the valve failures included, this maneuver should have only produced pure rotational motion with no translational component.
