@@ -64,4 +64,17 @@ Instructions
 1) Run velocity.py 
     - This plots the position and velocity of the data from datafile.csv. This data is noisy.
 2) Run Kalman.py
-    - Implements a 1-D constant velocity Kalman filter to remove sensor noise. 
+    - Implements a 1-D constant velocity Kalman filter to remove sensor noise.
+
+
+Demonstration
+--------------
+The animated .gif below illustrates the result of the Aruco fiducial marker detection process. The original video was captured at a resolution of 720 x 1280 at 30 frames/second. The Python script `aruco/getPoseAruco-postProcess.py` was used to process the original video. The process exports a copy of the video with the Aruco marker highlighted (as shown) and a .csv dataset (also shown) of the 3D position and 3D orientation of the Aruco marker relative to the center of the camera.
+
+![Sample rotation](/A1+A2_Rotation_4_aruco.gif)
+
+![Sample dataset](/A1+A2_Rotation_dataset.png)
+
+The timeseries dataset of position and orientation is fed into the Python-based Kalman filtering script `kalman/batch_kalman_3D.py`, which batch-processes any .csv file found in the specified directory. The Kalman filter combines a simple kinematic model with the real data from the Aruco measurements to produce a statistically accurate estimation of position and orientation vs. time of the air bearing platform. The results of multiple trials for the same expected motion are combined into a single image (as shown):
+
+![Sample results](/A1+A2_Rotation.png)
