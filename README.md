@@ -75,6 +75,8 @@ The animated .gif below illustrates the result of the Aruco fiducial marker dete
 
 ![Sample dataset](/A1+A2_Rotation_dataset.png)
 
-The timeseries dataset of position and orientation is fed into the Python-based Kalman filtering script `kalman/batch_kalman_3D.py`, which batch-processes any .csv file found in the specified directory. The Kalman filter combines a simple kinematic model with the real data from the Aruco measurements to produce a statistically accurate estimation of position and orientation vs. time of the air bearing platform. The results of multiple trials for the same expected motion are combined into a single image (as shown):
+The timeseries dataset of position and orientation is fed into the Python-based Kalman filtering script `kalman/batch_kalman_3D.py`, which batch-processes any .csv file found in the specified directory. The Kalman filter combines a simple kinematic model with the real data from the Aruco measurements to produce a statistically likely estimation of position and orientation vs. time of the air bearing platform. The results of multiple trials for the same expected motion are combined into a single image (as shown):
 
 ![Sample results](/A1+A2_Rotation.png)
+
+For this particular example, an attempted rotation with valves A1 and A2 failed open results in a large coupled translation + rotation.
