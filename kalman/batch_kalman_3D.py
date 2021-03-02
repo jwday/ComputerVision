@@ -13,7 +13,7 @@ sns.set_style("whitegrid", {"xtick.major.size": 0, "ytick.major.size": 0, 'grid.
 sns.set_context("paper", font_scale = 1, rc={"grid.linewidth": .5})
 sns.set_palette("colorblind")
 
-directory = '~/Research Files/Videos/Discharges and Modes/A1+A2/'
+directory = '~/Research-Files/Videos/Discharges and Modes/A1+A2/'
 dev_run = False
 
 def batch_kalman(directory, dev_run):

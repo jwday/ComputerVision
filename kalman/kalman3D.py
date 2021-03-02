@@ -45,7 +45,7 @@ def estimate_pose(datafile, delim_whitespace=False):
 	# ================================================================
 	# HANDLE ROTATION DATA
 	# ================================================================
-	df['r1'] = -np.rad2deg(df['r1'])									# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side. Also convert to degrees.
+	df['r1'] = np.rad2deg(df['r1'])										# Because opencv returns the translation FROM the Aruco marker TO the camera, but we want to see it from the other side. Also convert to degrees.
 	df['r1'] = [x - df['r1'][0] for x in df['r1']]						# Offset by initial value
 
 	add_amount = 0														# This block will handle incidences when the angle jumps from -180 to +180 or vice-versa. The threshold is 175 deg.
