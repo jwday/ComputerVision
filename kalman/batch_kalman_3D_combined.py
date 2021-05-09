@@ -14,10 +14,9 @@ sns.set_context("paper", font_scale = 1, rc={"grid.linewidth": .5})
 sns.set_palette("colorblind")
 
 # directory = '~/Research Files/Videos/Discharges and Modes/A1+A2/'
-directories = [ '~/Research-Files/Videos/Discharges and Modes/Pure Translation',
-				'~/Research-Files/Videos/Discharges and Modes/A2+D2',
-				'~/Research-Files/Videos/Discharges and Modes/A2+D3',
-				'~/Research-Files/Videos/Discharges and Modes/A3+D3']
+directories = [ '~/Research-Files/Videos/Discharges and Modes/Pure Rotation',
+				'~/Research-Files/Videos/Discharges and Modes/A2/Rotation',
+				'~/Research-Files/Videos/Discharges and Modes/A3/Rotation']
 dev_run = False
 
 # def batch_kalman(directory, dev_run):

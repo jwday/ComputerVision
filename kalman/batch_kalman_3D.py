@@ -14,7 +14,7 @@ sns.set_context("paper", font_scale = 1, rc={"grid.linewidth": .5})
 sns.set_palette("colorblind")
 
 directory = '~/Research-Files/Videos/Discharges and Modes/A1+A2/'
-dev_run = False
+dev_run = True
 
 def batch_kalman(directory, dev_run):
 	print('What is dev_run? It is: {}'.format(dev_run))
